@@ -1,0 +1,125 @@
+#! /bin/bash
+usage(){
+  echo "Usage: ./cut-clips-from-huge-oasis inputLayoutFileName layersFileName coorFileName radius"
+  echo "example: ./cut-clips-from-huge-oasis gds/ringo.gds layer coor 0.2"
+}
+if [ $# -ne 4 ] ;then
+  echo "ERROR : Incorrect number of arguments for ${0##*/}"  # 删除${0}字符串中最后一个‘/’及其之前的字符
+  usage
+  exit 1
+fi
+inputLayoutFile=$1    # with path
+layersFile=$2         # not important
+coorFile=$3
+radius=$4
+
+filename=$(basename "$inputLayoutFile")
+fname="${filename%.*}"
+
+###step-0: get layer info
+echo "step-0: get layer info"
+klayout -e -z -r get-layer-info.py -rd input_file="$inputLayoutFile" > "$layersFile"
+
+
+
+#step-1: extract single layer big oasis
+echo "step-1: extract single layer big oasis"
+#cat $layersFile | while read line
+## following is recommended
+#tmp="tmp"
+#if [ ! -d $tmp ]; then
+#  mkdir $tmp
+#fi
+
+while read -r line
+do
+#  echo $line
+  if [[ $line =~ "LAYER" ]]; then
+    echo
+  else
+#    l=`echo $line | cut -d' ' -f1`
+#    d=`echo $line | cut -d' ' -f2`
+    ## following is recommended
+    l=$(echo "$line" | cut -d'/' -f1)
+    d=$(echo "$line" | cut -d'/' -f2)
+
+    echo "extracting layer $l-$d ..."
+    klayout -e -z -r extract-single-layer.py -rd input_file="$inputLayoutFile" -rd layer="$l" -rd datatype="$d" -rd output_file="layer$l-$d.oas"
+  fi
+done < "$layersFile"
+
+#step-2: cut clips from each single layer big oasis
+echo "step-2: cut clips from each single layer big oasis"
+#for oas in `ls layer*-*.oas`
+#do
+#  echo "cutting $oas ..."
+#  klayout -e -z -r clip.py -rd input_file=$oas -rd coor_file=$coorFile -rd radius=$radius -rd output="clips.$oas"
+#done
+## following is recommended
+clips_dir="clips"
+output_clips_dir="$clips_dir/$fname"
+
+if [ ! -d "$clips_dir" ]; then
+  mkdir "$clips_dir"
+fi
+if [ ! -d "$output_clips_dir" ]; then
+  mkdir "$output_clips_dir"
+fi
+
+for oas in layer*-*.oas
+do
+  [[ -e "$oas" ]] || break  # handle the case of no *.wav files
+  echo "cutting $oas ..."
+  klayout -e -z -r clip.py -rd input_file="$oas" -rd coor_file="$coorFile" -rd radius=$radius -rd output="$output_clips_dir/clips_$fname_$oas"
+done
+
+#if don't want to reserve last layer files
+rm layer*-*.oas
+
+##############################################
+#step-3: transform gds to ascii
+echo "step-3: transform gds to ascii"
+ascii_dir="ascii"
+output_ascii_dir="$ascii_dir/$fname"
+
+if [ ! -d "$ascii_dir" ]; then
+  mkdir "$ascii_dir"
+fi
+if [ ! -d "$output_ascii_dir" ]; then
+  mkdir "$output_ascii_dir"
+fi
+
+for gds in "$output_clips_dir"/*.gds
+do
+  [[ -e "$gds" ]] || break  # handle the case of no *.wav files
+  echo "gds2ascii $gds ..."
+  gdsfilename=$(basename "$gds")
+  gdsfname="${gdsfilename%.*}"
+  python3 gds2ascii.py "$gds" ./"$output_ascii_dir"/"$gdsfname".json
+done
+
+
+
+#step-4: matlab read from json, resize and process
+echo "step-4: matlab read from json, resize and process "
+# create some dir to save data
+create_dir_list=(
+  'original_plot/'
+  'original_data/'
+  'process_data/'
+)
+for c_dir in "${create_dir_list[@]}"
+do
+#  echo $c_dir
+  if [ ! -d "$c_dir" ]; then
+    mkdir "$c_dir"
+  fi
+  if [ ! -d "$c_dir/$fname" ]; then
+    mkdir "$c_dir/$fname"
+  fi
+done
+
+matlab -nodesktop -nosplash -r "fname='$fname';ascii_dir='$output_ascii_dir';launch;quit;"
+
+
+echo "Completed!"

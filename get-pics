@@ -1,0 +1,17 @@
+#! /bin/bash
+usage(){
+  echo "Usage: ./t-pics inputGdsDir layer coor radius"
+  echo "example: ./get-pics gds layer coor 0.2"
+}
+inputGdsDir=$1
+layer=$2
+coor=$3
+radius=$4
+
+for gds in "$inputGdsDir"/*.gds
+do
+  [[ -e "$gds" ]] || break  # handle the case of no *.wav files
+  echo "get-pics from $gds ..."
+  ./cut-clips-from-huge-oasis "$gds" "$layer" "$coor" $radius
+done
+
