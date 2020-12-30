@@ -16,20 +16,14 @@ radius=$4
 filename=$(basename "$inputLayoutFile")
 fname="${filename%.*}"
 
-###step-0: get layer info
+
+#step-0: get layer info
 echo "step-0: get layer info"
 klayout -e -z -r get-layer-info.py -rd input_file="$inputLayoutFile" > "$layersFile"
 
 
-
 #step-1: extract single layer big oasis
 echo "step-1: extract single layer big oasis"
-#cat $layersFile | while read line
-## following is recommended
-#tmp="tmp"
-#if [ ! -d $tmp ]; then
-#  mkdir $tmp
-#fi
 
 while read -r line
 do
@@ -50,12 +44,6 @@ done < "$layersFile"
 
 #step-2: cut clips from each single layer big oasis
 echo "step-2: cut clips from each single layer big oasis"
-#for oas in `ls layer*-*.oas`
-#do
-#  echo "cutting $oas ..."
-#  klayout -e -z -r clip.py -rd input_file=$oas -rd coor_file=$coorFile -rd radius=$radius -rd output="clips.$oas"
-#done
-## following is recommended
 clips_dir="clips"
 output_clips_dir="$clips_dir/$fname"
 
@@ -76,9 +64,11 @@ done
 #if don't want to reserve last layer files
 rm layer*-*.oas
 
+
 ##############################################
 #step-3: transform gds to ascii
 echo "step-3: transform gds to ascii"
+
 ascii_dir="ascii"
 output_ascii_dir="$ascii_dir/$fname"
 
@@ -99,9 +89,9 @@ do
 done
 
 
-
 #step-4: matlab read from json, resize and process
 echo "step-4: matlab read from json, resize and process "
+
 # create some dir to save data
 create_dir_list=(
   'original_plot/'
