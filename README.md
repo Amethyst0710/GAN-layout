@@ -1,10 +1,9 @@
 [toc]
 
-
-
-
 # 目录结构
+
 cut
+├──README.md
 ├── clip.py
 ├── coor
 ├── cut-clips-from-huge-oasis
@@ -26,22 +25,21 @@ cut
 ├── clips
 │   ├── ringo
 │   └── t
-├── original_data
-│   ├── ringo
-│   └── t
 ├── original_plot
 │   ├── ringo
 │   └── t
-├── process_data
+├── original_data
 │   ├── ringo
 │   └── t
+└── process_data
+      ├── ringo
+      └── t
 
-└── README.md
 
 
 # get-pics
 
-get-pics脚本实现对每一个./gds文件夹里的版图文件执行`./cut-clips-from-huge-oasis "$gds" "$layer" "$coor" $radius`
+get-pics脚本是TOP脚本，实现对每一个./gds文件夹里的版图文件执行`./cut-clips-from-huge-oasis "$gds" "$layer" "$coor" $radius`
 
 ```shell
 usage(){
@@ -54,7 +52,7 @@ usage(){
 
 # CUT CLIP
 
-cut-clips-from-huge-oasis 脚本从版图文件中切割一小部分版图，指定以下信息，生成的版图为不包含cell层次信息的单个cell，单层layer版图。
+cut-clips-from-huge-oasis 脚本从版图文件中切割一小部分版图，指定以下信息，生成的版图为不包含cell层次信息的单个cell，单层layer版图。然后调用matlab进行处理。
 
 ```shell
 usage(){
@@ -62,6 +60,8 @@ usage(){
   echo "example: ./cut-clips-from-huge-oasis gds/ringo.gds layer coor 0.2"
 }
 ```
+
+其中
 
 ```
 inputOasisFileName 被切割版图
@@ -78,19 +78,7 @@ coorFileName 指定位置：
 radius 		切割大小，以um为单位，与上面XY同单位。
 ```
 
-
-结果将如下：
-
-![image-20201228153048600](README.assets/image-20201225143848229.png)
-
-
-
-截自：
-
-![image-20201228153048600](README.assets/image-20201225144147033.png)
-
-
-步骤：
+## 核心步骤
 
 ```shell
 echo "step-0: get layer info"
@@ -101,6 +89,22 @@ echo "step-4: matlab read from json, resize and process "
 ```
 
 
+## 结果
+**cut** 结果将如下：
+
+![image-20201228153048600](README.assets/image-20201225143848229.png)
+
+截自：
+
+![image-20201228153048600](README.assets/image-20201225144147033.png)
+
+
+
+**step-4: matlab** 结果如下：
+
+左边是切割结果，右边是低通滤波结果。（这里白色为背景，黑色是画图部分）
+
+![image-20201230152950298](README.assets/image-20201230152950298.png)
 
 
 
@@ -113,6 +117,7 @@ echo "step-4: matlab read from json, resize and process "
 
 
 ## step-4: matlab read from json, resize and process
+
 ### ASCII TO MATLAB PLOT
 
 在matlab脚本中，从gds2ascii的结果文件中读取数据到cell中。根据规律，数据应该从下面部分读取：
@@ -167,8 +172,6 @@ matlab -nodesktop -nosplash -r "a.m;quit" 都报错
 ```matlab
 matlab -nodesktop -nosplash -r "cd ~/Documents/MATLAB/OPC;test;quit;"
 ```
-
-
 
 
 
