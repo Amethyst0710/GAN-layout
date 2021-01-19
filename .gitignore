@@ -4,5 +4,6 @@ test*
 layer*-*
 
 !README.assets
+!testdata
 
 
