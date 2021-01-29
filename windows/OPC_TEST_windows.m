@@ -2,10 +2,11 @@
 %%%% this file works on windows for process sth.
 %% not from json but draw myself for test
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%% start
+%% start & global setting
 clc;
 clear all;
 test_show_im=1;
+xpcnt=0.33;ypcnt=0.33;
 %% original pic draw
 w=200;h=200;
 img_target=zeros(w,h);
@@ -95,7 +96,14 @@ if test_show_im==1
 subplot(2,2,2),imshow(img_process,[]);
 title('µÍÍ¨ÂË²¨ºóµÄÍ¼Ïñ');
 end
-
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+img_target_cut=cut_center_img(img_target,xpcnt,ypcnt);
+img_process_cut=cut_center_img(img_process,xpcnt,ypcnt);
+if test_show_im==1
+figure()
+subplot(1,2,1),imshow(img_target_cut);
+subplot(1,2,2),imshow(img_process_cut,[]);
+end
 %%
 % img_process only 0/1
 bw_p=1-logical(img_process);      % ºÚ°×ÏÔÉ«
