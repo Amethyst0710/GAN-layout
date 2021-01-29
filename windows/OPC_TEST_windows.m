@@ -48,24 +48,20 @@ img_target_wb=1-img_target;
 % 所以实际处理时应该白1表示画了的掩膜图形,即处理过程中显示的是黑底
 imshow(img_target_wb);
 show_edge(img_target,'r');
-%% 关于截取图像的中心部分判断，计算时候不考虑buffer这件事
-% img=cut_center_img(img_target,0.5,0.5);
-% img=cut_center_img(img_target,0.33,0.33);
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% 低通滤波
 % 调用lybo.m中的"好像比较靠谱 但是这个没有转灰度，"
 if test_show_im==1
-figure,
-subplot(2,2,1),imshow(img_target);
-title('原图像');
+    figure,
+    subplot(2,2,1),imshow(img_target);
+    title('原图像');
 end
 
 % 将低频移动到图像的中心，这个也很重要
 s=fftshift(fft2(img_target));
 
 if test_show_im==1
-subplot(2,2,3),imshow(log(abs(s)),[]);% imagesc(abs(s));
-title('图像傅里叶变换取对数所得频谱');
+    subplot(2,2,3),imshow(log(abs(s)),[]);% imagesc(abs(s));
+    title('图像傅里叶变换取对数所得频谱');
 end
 
 % 求解变换后的图像的中心，我们后续的处理是依据图像上的点距离中心点的距离来进行处理
@@ -86,23 +82,23 @@ for i=1:a
 end
 
 if test_show_im==1
-subplot(2,2,4),imshow(log(abs(low_filter)),[]);% imagesc(abs(low_filter));
-title('低通滤波频谱');
+    subplot(2,2,4),imshow(log(abs(low_filter)),[]);% imagesc(abs(low_filter));
+    title('低通滤波频谱');
 end
 
 img_process = uint8(real(ifft2(ifftshift(low_filter))));
 
 if test_show_im==1
-subplot(2,2,2),imshow(img_process,[]);
-title('低通滤波后的图像');
+    subplot(2,2,2),imshow(img_process,[]);
+    title('低通滤波后的图像');
 end
 %% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 img_target_cut=cut_center_img(img_target,xpcnt,ypcnt);
 img_process_cut=cut_center_img(img_process,xpcnt,ypcnt);
 if test_show_im==1
-figure()
-subplot(1,2,1),imshow(img_target_cut);
-subplot(1,2,2),imshow(img_process_cut,[]);
+    figure()
+    subplot(1,2,1),imshow(img_target_cut);
+    subplot(1,2,2),imshow(img_process_cut,[]);
 end
 %%
 % img_process only 0/1
@@ -198,33 +194,33 @@ end
 % (i,j)矩阵第i行第j列，等价于MATLAB坐标位置(j,MAMY-i)，设置左上角为(0,0)则(j,i)
 % 现在必须输入坐左上右下，以后可以优化 ###TODO
 function img=draw_rec(img,y1,x1,y3,x3,z)
-% [a,b] = size(img);
-for i=x1:1:x3
-    for j=y1:1:y3
-        img(i,j)=z;
+    % [a,b] = size(img);
+    for i=x1:1:x3
+        for j=y1:1:y3
+            img(i,j)=z;
+        end
     end
-end
 end
 
 function img=ear4(img,x1,y1,x3,y3,r,z)
-img=draw_rec(img,x1-r,y1-r,x1+r,y1+r,z);
-img=draw_rec(img,x3-r,y1-r,x3+r,y1+r,z);
-img=draw_rec(img,x1-r,y3-r,x1+r,y3+r,z);
-img=draw_rec(img,x3-r,y3-r,x3+r,y3+r,z);
+    img=draw_rec(img,x1-r,y1-r,x1+r,y1+r,z);
+    img=draw_rec(img,x3-r,y1-r,x3+r,y1+r,z);
+    img=draw_rec(img,x1-r,y3-r,x1+r,y3+r,z);
+    img=draw_rec(img,x3-r,y3-r,x3+r,y3+r,z);
 end
 
 % clone part from img_source(xs,ys) to img_dest(xd,yd) 
 % 现在不能超出矩阵范围，以后可优化只粘贴重叠部分 ###TODO
 function img=cloned_part_img(img_dest,xd,yd,img_source,xs,ys,w,h)
-img=img_dest;
-img(xd:xd+w-1,yd:yd+h-1)=img_source(xs:xs+w-1,ys:ys+h-1);
+    img=img_dest;
+    img(xd:xd+w-1,yd:yd+h-1)=img_source(xs:xs+w-1,ys:ys+h-1);
 end
 
 function img=cut_center_img(img_source,xpcnt,ypcnt)
-[a,b]=size(img_source);
-w=floor(a*xpcnt);
-h=floor(b*ypcnt);
-x1=floor((a-w)/2);
-y1=floor((b-h)/2);
-img=img_source(x1:x1+w,y1:y1+h);
+    [a,b]=size(img_source);
+    w=floor(a*xpcnt);
+    h=floor(b*ypcnt);
+    x1=floor((a-w)/2);
+    y1=floor((b-h)/2);
+    img=img_source(x1:x1+w,y1:y1+h);
 end
