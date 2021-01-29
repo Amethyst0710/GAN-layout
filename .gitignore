@@ -2,8 +2,11 @@
 */
 test*
 layer*-*
+*.asv
 
 !README.assets
 !testdata
+!windows
+
 
 
