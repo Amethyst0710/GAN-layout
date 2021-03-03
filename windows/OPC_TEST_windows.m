@@ -5,8 +5,11 @@
 %% start & global setting
 clc;
 clear all;
+global test_show_im
 test_show_im=1;
+global xpcnt;global ypcnt;
 xpcnt=0.33;ypcnt=0.33;
+minEPE=0.5;%%%%%%%%%%%%%%%%%%%%%%%%%%%?
 %% original pic draw
 w=200;h=200;
 img_target=zeros(w,h);
@@ -49,57 +52,23 @@ img_target_wb=1-img_target;
 imshow(img_target_wb);
 show_edge(img_target,'r');
 %% 低通滤波
-% 调用lybo.m中的"好像比较靠谱 但是这个没有转灰度，"
-if test_show_im==1
-    figure,
-    subplot(2,2,1),imshow(img_target);
-    title('原图像');
-end
-
-% 将低频移动到图像的中心，这个也很重要
-s=fftshift(fft2(img_target));
-
-if test_show_im==1
-    subplot(2,2,3),imshow(log(abs(s)),[]);% imagesc(abs(s));
-    title('图像傅里叶变换取对数所得频谱');
-end
-
-% 求解变换后的图像的中心，我们后续的处理是依据图像上的点距离中心点的距离来进行处理
-[a,b] = size(img_target);
-a0 = round(a/2);
-b0 = round(b/2);
-d = min(a0,b0)/12;      %12  此处决定距离中心多远的频率不要  
-% d = 5;
-d = d^2;
-low_filter=zeros(a,b);
-for i=1:a
-    for j=1:b
-        distance = (i-a0)^2+(j-b0)^2;
-        if distance<d
-            low_filter(i,j) = s(i,j);
-        end
-    end
-end
-
-if test_show_im==1
-    subplot(2,2,4),imshow(log(abs(low_filter)),[]);% imagesc(abs(low_filter));
-    title('低通滤波频谱');
-end
-
-img_process = uint8(real(ifft2(ifftshift(low_filter))));
-
-if test_show_im==1
-    subplot(2,2,2),imshow(img_process,[]);
-    title('低通滤波后的图像');
-end
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-img_target_cut=cut_center_img(img_target,xpcnt,ypcnt);
-img_process_cut=cut_center_img(img_process,xpcnt,ypcnt);
+img_process=filtering(img_target);
+% figure,
+% imshow(img_process,[]);
+%% cut center pic
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+img_target_cut=cut_center_img(img_target);
+img_process_cut=cut_center_img(img_process);
 if test_show_im==1
     figure()
     subplot(1,2,1),imshow(img_target_cut);
+    show_edge(img_target_cut,'r');
     subplot(1,2,2),imshow(img_process_cut,[]);
+    show_edge(img_process_cut,'b');
 end
+%% OPC
+OPC(img_target_cut,img_process_cut,minEPE);
+
 %%
 % img_process only 0/1
 bw_p=1-logical(img_process);      % 黑白显色
@@ -216,11 +185,135 @@ function img=cloned_part_img(img_dest,xd,yd,img_source,xs,ys,w,h)
     img(xd:xd+w-1,yd:yd+h-1)=img_source(xs:xs+w-1,ys:ys+h-1);
 end
 
-function img=cut_center_img(img_source,xpcnt,ypcnt)
+function img=cut_center_img(img_source)
+    global xpcnt;global ypcnt;
     [a,b]=size(img_source);
     w=floor(a*xpcnt);
     h=floor(b*ypcnt);
     x1=floor((a-w)/2);
     y1=floor((b-h)/2);
     img=img_source(x1:x1+w,y1:y1+h);
+end
+
+function img_source=restore_center_img(img_source,img_filled)
+    global xpcnt;global ypcnt;
+    [a,b]=size(img_source);
+    w=floor(a*xpcnt);
+    h=floor(b*ypcnt);
+    x1=floor((a-w)/2);
+    y1=floor((b-h)/2);
+    img_source(x1:x1+w,y1:y1+h)=img_filled;
+end
+
+function img_process=filtering(img_target)
+    % 低通滤波
+    % 调用lybo.m中的"好像比较靠谱 但是这个没有转灰度，"
+    global test_show_im
+    if test_show_im==1
+        figure,
+        subplot(2,2,1),imshow(img_target);
+        title('原图像');
+    end
+
+    % 将低频移动到图像的中心，这个也很重要
+    s=fftshift(fft2(img_target));
+
+    if test_show_im==1
+        subplot(2,2,3),imshow(log(abs(s)),[]);% imagesc(abs(s));
+        title('图像傅里叶变换取对数所得频谱');
+    end
+
+    % 求解变换后的图像的中心，我们后续的处理是依据图像上的点距离中心点的距离来进行处理
+    [a,b] = size(img_target);
+    a0 = round(a/2);
+    b0 = round(b/2);
+    d = min(a0,b0)/12;      %12  此处决定距离中心多远的频率不要  
+    % d = 5;
+    d = d^2;
+    low_filter=zeros(a,b);
+    for i=1:a
+        for j=1:b
+            distance = (i-a0)^2+(j-b0)^2;
+            if distance<d
+                low_filter(i,j) = s(i,j);
+            end
+        end
+    end
+
+    if test_show_im==1
+        subplot(2,2,4),imshow(log(abs(low_filter)),[]);% imagesc(abs(low_filter));
+        title('低通滤波频谱');
+    end
+
+    img_process = uint8(real(ifft2(ifftshift(low_filter))));
+
+    if test_show_im==1
+        subplot(2,2,2),imshow(img_process,[]);
+        title('低通滤波后的图像');
+    end
+end
+
+function [img,bs]=cal_opc(img_source,bs)
+
+end
+
+function EPE=cal_EPE(img_source,img_process)
+
+end
+
+function OPC(img_source,minEPE)
+    img_source_o=img_source;
+    img_source_i=cut_center_img(img_source_o);
+    img_process=img_source_i;
+    % _o后缀是原大小图片、未切割
+    % img_source_i 原图片切割后结果
+    
+    
+    % to get initial work, sample & stack
+    skip=10;     %采样点间隔
+    BW = imbinarize(img_process);
+    [B,L] = bwboundaries(BW);
+    bs=cell(length(B),3);   % no.|| x  y  stack_to_record_sample || k*3
+    %cell2mat(p(1,1)) to get data
+    for k = 1:length(B)
+       boundary = B{k};     %包含最外的矩形框
+       xs=boundary(1:skip:length(boundary),2);
+       ys=boundary(1:skip:length(boundary),1);
+       bs(k,1)={xs};
+       bs(k,2)={ys};
+       bs(k,3)={zeros(1,len(xs))};
+       bs(k,4)={len(xs)};
+    end
+     
+    img_process_o=filtering(img_source_o);  % filtering need no cut image    
+    img_process=cut_center_img(img_process_o);
+    
+    EPE=cal_EPE(img_source_i,img_process);
+    
+    
+    opc_process();  % get: img_process EPE
+    % 终止条件：达到minEPE or 全部情况测试完
+    while(EPE>minEPE || sum(sum(cell2mat(bs(:,2))==0))==0 )  
+        [img_process,bs]=cal_opc(img_process,bs);
+        
+        img_source_o=restore_center_img(img_source_o,img_process);       
+        img_process_o=filtering(img_source_o);        
+        img_process=cut_center_img(img_process_o);
+
+        EPE=cal_EPE(img_source_i,img_process);
+    end
+    
+    
+    img_source_o=restore_center_img(img_source_o,img_process);       
+    img_process_o=filtering(img_source_o);        
+    img_process=cut_center_img(img_process_o);
+    
+    % show result
+    figure();
+    subplot(1,2,1),imshow(img_source_i);
+    show_edge(img_source_i,'r');
+    subplot(1,2,2),imshow(img_process,[]);
+    show_edge(img_process,'b');
+    EPE
+    
 end
