@@ -9,6 +9,10 @@ global test_show_im
 test_show_im=1;
 global xpcnt;global ypcnt;
 xpcnt=0.33;ypcnt=0.33;
+global skip;global opc_width;
+skip=10;     %采样点间隔
+opc_width=5;
+global minEPE;
 minEPE=0.5;%%%%%%%%%%%%%%%%%%%%%%%%%%%?
 %% original pic draw
 w=200;h=200;
@@ -67,7 +71,7 @@ if test_show_im==1
     show_edge(img_process_cut,'b');
 end
 %% OPC
-OPC(img_target_cut,img_process_cut,minEPE);
+OPC(img_target_cut,img_process_cut);
 
 %%
 % img_process only 0/1
@@ -261,19 +265,53 @@ function EPE=cal_EPE(img_source,img_process)
 
 end
 
-function OPC(img_source,minEPE)
-    img_source_o=img_source;
-    img_source_i=cut_center_img(img_source_o);
-    img_process=img_source_i;
+function [img_process,bs]=opc_process(img_process,bs,img_source,img_source_i,EPE)
+    global minEPE
+    % 终止条件：达到minEPE or 全部情况测试完
+    function flag=types_opc_process(type)
+        [img_process,bs]=cal_opc(img_process,bs,type);
+
+        img_process_o=restore_center_img(img_source,img_process);       
+        img_filtered_o=filtering(img_process_o);        
+        img_filtered=cut_center_img(img_filtered_o);
+
+        EPE=cal_EPE(img_source_i,img_filtered);
+        
+        if( EPE>minEPE || sum(sum(cell2mat(bs(:,3))==0))==0 )  
+            flag=true
+            return
+        else
+            [img_process,bs]=opc_process(img_process,bs,img_source_o,img_source_i,EPE);
+        end
+        flag=false
+    end
+    
+    for type = [0,1,-1]
+        if types_opc_process(type)
+            return
+        end
+    end
+    % if all failed TODO
+    
+    % cal_opc: choose a line, draw new img, 0
+    % cal_opc: choose a line, draw new img, 1
+    % cal_opc: choose a line, draw new img, -1
+end
+
+function OPC(img_source)
+    img_process_o=img_source;
+    img_source_i=cut_center_img(img_source);
+    img_process=img_source_i;   % --> img_opc not filtered
     % _o后缀是原大小图片、未切割
     % img_source_i 原图片切割后结果
+    % img_source_o 切割前，滤波前，一直在变化
     
     
     % to get initial work, sample & stack
-    skip=10;     %采样点间隔
+    global skip;
     BW = imbinarize(img_process);
     [B,L] = bwboundaries(BW);
-    bs=cell(length(B),3);   % no.|| x  y  stack_to_record_sample || k*3
+    bs=cell(length(B),4);   % no.|| x  y  stack_to_record_sample index || k*4
     %cell2mat(p(1,1)) to get data
     for k = 1:length(B)
        boundary = B{k};     %包含最外的矩形框
@@ -285,35 +323,39 @@ function OPC(img_source,minEPE)
        bs(k,4)={len(xs)};
     end
      
-    img_process_o=filtering(img_source_o);  % filtering need no cut image    
-    img_process=cut_center_img(img_process_o);
+    img_filtered_o=filtering(img_process_o);  % filtering need no cut image    
+    img_filtered=cut_center_img(img_filtered_o);
     
-    EPE=cal_EPE(img_source_i,img_process);
+    EPE=cal_EPE(img_source_i,img_filtered);
     
+    %%%% cal_min_EPE and its img_process TODO
+    opc_process(img_process,bs,img_source,img_source_i,EPE);  % get: img_process EPE
     
-    opc_process();  % get: img_process EPE
-    % 终止条件：达到minEPE or 全部情况测试完
-    while(EPE>minEPE || sum(sum(cell2mat(bs(:,2))==0))==0 )  
-        [img_process,bs]=cal_opc(img_process,bs);
-        
-        img_source_o=restore_center_img(img_source_o,img_process);       
-        img_process_o=filtering(img_source_o);        
-        img_process=cut_center_img(img_process_o);
-
-        EPE=cal_EPE(img_source_i,img_process);
-    end
+%     global minEPE
+%     % 终止条件：达到minEPE or 全部情况测试完
+%     while( EPE>minEPE || sum(sum(cell2mat(bs(:,3))==0))==0 )  
+%         [img_process,bs]=cal_opc(img_process,bs);
+%         
+%         img_process_o=restore_center_img(img_source,img_process);       
+%         img_filtered_o=filtering(img_process_o);        
+%         img_filtered=cut_center_img(img_filtered_o);
+% 
+%         EPE=cal_EPE(img_source_i,img_filtered);
+%     end
     
-    
-    img_source_o=restore_center_img(img_source_o,img_process);       
-    img_process_o=filtering(img_source_o);        
-    img_process=cut_center_img(img_process_o);
+    % end
+    img_process_o=restore_center_img(img_source,img_process);       
+    img_filtered_o=filtering(img_process_o);        
+    img_filtered=cut_center_img(img_filtered_o);
     
     % show result
     figure();
     subplot(1,2,1),imshow(img_source_i);
-    show_edge(img_source_i,'r');
-    subplot(1,2,2),imshow(img_process,[]);
-    show_edge(img_process,'b');
+    show_edge(img_source_i,'r');    
+    subplot(1,3,2),imshow(img_process);
+    show_edge(img_process,'r');
+    subplot(1,3,3),imshow(img_filtered,[]);
+    show_edge(img_filtered,'r');
     EPE
     
 end
