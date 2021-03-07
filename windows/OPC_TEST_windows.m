@@ -272,18 +272,28 @@ function [img,bs]=cal_opc(img_source,bs,type)
     
     % now see that k=1
     k=1;
-    idx=cell2mat(bs(k,4));
+    idx=bs{k,4};
     % if finished
     if idx==0
         return
     end
-    bs(k,4)={idx-1};
-    arr=cell2mat(bs(k,3));
- 
-%     -->p1,p2
+    arr=bs{k,3};
+    
+    % idx in (1~length)
+    x1=bs{k,1}(idx);
+    y1=bs{k,2}(idx);
+    if idx==1
+        idx2=length(bs{k,3});   % if last one
+    else
+        idx2=idx-1;
+    end
+    x2=bs{k,1}(idx2);
+    y2=bs{k,2}(idx2);
+        
+
 %     2. figure out to this line what is in/out
 %     3. draw_rect to change img
-    
+    bs(k,4)={idx-1};    
     arr(idx)=type;
     bs(k,3)={arr};
 
@@ -321,13 +331,13 @@ function [img_process,bs,flag]=opc_process(img_process,bs,img_source,img_source_
         % now see that k=1
         k=1;
 %         bs(k,3)
-        idx=cell2mat(bs(k,4));
-        % sum(sum(cell2mat(bs(k,3))==0))==0 
+        idx=bs{k,4};
+        % sum(sum(bs{k,3}==0))==0 
         if( EPE<minEPE )  
             flag=true;
         elseif( idx==0 )
             flag=false;
-            bs(k,4)={length(cell2mat(bs(k,3)))};
+            bs(k,4)={length(bs{k,3})};
         else
             [img_process,bs,flag]=opc_process(img_process,bs,img_source,img_source_i,EPE);
         end
@@ -360,7 +370,7 @@ function OPC(img_source)
     BW = imbinarize(img_process);
     [B,L] = bwboundaries(BW);
     bs=cell(length(B),4);   % no.|| x  y  stack_to_record_sample index || k*4
-    %cell2mat(p(1,1)) to get data
+    %cell2mat(p(1,1)) to get data /// or bs{k,3}
     % now see that k=1 ---- only has 1 boundary
     for k = 1:length(B)
        boundary = B{k};     %包含最外的矩形框
@@ -368,6 +378,7 @@ function OPC(img_source)
        ys=boundary(1:skip:length(boundary),1);
        bs(k,1)={xs};
        bs(k,2)={ys};
+%        bs(k,1)={boundary(1:skip:length(boundary),:)} %%%%(y,x)
        bs(k,3)={zeros(1,length(xs))};
        bs(k,4)={length(xs)};
     end
