@@ -2,10 +2,11 @@
 %%%% this file works on windows for process sth.
 %% not from json but draw myself for test
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+figure()
 %% start & global setting
 clc;
 clear all;
-%%
+%% config
 global test_show_im
 test_show_im=0;
 global xpcnt;global ypcnt;
@@ -18,6 +19,7 @@ minEPE=0.5;%%%%%%%%%%%%%%%%%%%%%%%%%%%?
 %% original pic draw
 w=200;h=200;
 img_target=zeros(w,h);
+% in draw sys -->x  |y
 % draw rec L-1
 w1=20;h1=50;
 x1=70;y1=70;
@@ -167,12 +169,28 @@ function show_edge(img,color)
     end
 end
 
+function x=check_in_range(x,min,max)
+    if x<min ;x=min; end
+    if x>max ;x=max; end
+end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% function img=draw_rec(img,x1,y1,x3,y3,z)
+function img=draw_rec(img,x1,y1,x3,y3,z)
 % (i,j)矩阵第i行第j列，等价于MATLAB坐标位置(j,MAMY-i)，设置左上角为(0,0)则(j,i)
-% 现在必须输入坐左上右下，以后可以优化 ###TODO
-function img=draw_rec(img,y1,x1,y3,x3,z)
-    % [a,b] = size(img);
+% 现在必须输入坐左上右下or右上左下，以后可以更优化, 检查 ###TODO
+% x,y in plot is diff from row,coloum (x=c, y=r)
+% function img=draw_rec(img,y1,x1,y3,x3,z)
+    [a,b] = size(img);
+
+    x1=check_in_range(x1,1,a);
+    x3=check_in_range(x3,1,a);
+    y1=check_in_range(y1,1,b);
+    y3=check_in_range(y3,1,b);
+    
+    if(x1>x3 && y1>y3)
+        t=x1;x1=x3;x3=t;
+        t=y1;y1=y3;y3=t;
+    end
+
     for i=x1:1:x3
         for j=y1:1:y3
             img(i,j)=z;
@@ -188,6 +206,7 @@ function img=ear4(img,x1,y1,x3,y3,r,z)
 end
 
 % clone part from img_source(xs,ys) to img_dest(xd,yd) 
+% here x,y means row,col
 % 现在不能超出矩阵范围，以后可优化只粘贴重叠部分 ###TODO
 function img=cloned_part_img(img_dest,xd,yd,img_source,xs,ys,w,h)
     img=img_dest;
@@ -269,7 +288,7 @@ function [img,bs]=cal_opc(img_source,bs,type)
 %     4. save situation to cell bs
 
     img=img_source; % do nothing
-    
+    type
     % now see that k=1
     k=1;
     idx=bs{k,4};
@@ -290,15 +309,64 @@ function [img,bs]=cal_opc(img_source,bs,type)
     x2=bs{k,1}(idx2);
     y2=bs{k,2}(idx2);
         
-
+    on=1;off=0;
+    global opc_width
+    [a,b] = size(img);
 %     2. figure out to this line what is in/out
 %     3. draw_rect to change img
-    bs(k,4)={idx-1};    
+    % here x,y means row,col
+    if(x1==x2)
+        % ——
+        xx=x1+opc_width-1; %%%%%%%%%%%%%%%%%%%%
+        xx=check_in_range(xx,1,a);
+        if(img_source(xx,floor((y1+y2)/2))==on)
+            % down is on
+            direc=1;
+        else
+            % up is on
+            direc=0;
+        end
+        switch (type+direc*10)
+            case 1  % type=1, direc=0 draw down on
+                img=draw_rec(img,x1+opc_width,y1,x2,y2,on);
+            case -1 % type=-1, direc=0 draw up off
+                img=draw_rec(img,x1-opc_width,y1,x2,y2,off);
+            case 11 % type=1, direc=1 draw up on
+                img=draw_rec(img,x1-opc_width,y1,x2,y2,on);
+            case 9  % type=-1, direc=1 draw down off
+                img=draw_rec(img,x1+opc_width,y1,x2,y2,off);
+        end
+    elseif(y1==y2)
+        % |
+        yy=y1+opc_width-1; %%%%%%%%%%%%%%%%%%%%
+        yy=check_in_range(yy,1,b);
+        if(img_source(floor((x1+x2)/2),yy)==on)
+            % right is on
+            direc=1;
+        else
+            % left is on
+            direc=0;
+        end
+        switch (type+direc*10)
+            case 1  % type=1, direc=0 draw right on
+                img=draw_rec(img,x1+opc_width,y1,x2,y2,on);
+            case -1 % type=-1, direc=0 draw left off
+                img=draw_rec(img,x1-opc_width,y1,x2,y2,off);
+            case 11 % type=1, direc=1 draw left on
+                img=draw_rec(img,x1-opc_width,y1,x2,y2,on);
+            case 9  % type=-1, direc=1 draw right off
+                img=draw_rec(img,x1+opc_width,y1,x2,y2,off);
+        end
+    elseif (type~=0)
+        % \ / 
+        if type==1;z=on;elseif type==-1;z=off;end
+        img=draw_rec(img,x1,y1,x2,y2,z);
+    end
+
+    bs(k,4)={idx-1};  
     arr(idx)=type;
     bs(k,3)={arr};
 
-    
-    
 end
 
 function EPE=cal_EPE(img_source,img_process)
@@ -306,7 +374,7 @@ function EPE=cal_EPE(img_source,img_process)
 %     EPE=0.6; % >minEPE
 %     EPE=rand(1)
     global ttt
-    if ttt<25
+    if ttt<125
         ttt=ttt+1;
         EPE=1;
     else
@@ -314,23 +382,24 @@ function EPE=cal_EPE(img_source,img_process)
     end
 end
 
-function [img_process,bs,flag]=opc_process(img_process,bs,img_source,img_source_i,EPE)
+function [img_process,bs,flag]=opc_process(bs,img_source,img_process_base,EPE)
 %     flag=false;   %
     global minEPE
     % 终止条件：达到minEPE or 全部情况测试完
     function flag=types_opc_process(type)
 %         type   %
-        [img_process,bs]=cal_opc(img_process,bs,type);
+        [img_process,bs]=cal_opc(img_process_base,bs,type);
 
         img_process_o=restore_center_img(img_source,img_process);       
         img_filtered_o=filtering(img_process_o);        
         img_filtered=cut_center_img(img_filtered_o);
-
+        img_source_i=cut_center_img(img_source);
+        
         EPE=cal_EPE(img_source_i,img_filtered);
         
         % now see that k=1
         k=1;
-%         bs(k,3)
+%         bs{k,3};
         idx=bs{k,4};
         % sum(sum(bs{k,3}==0))==0 
         if( EPE<minEPE )  
@@ -339,7 +408,7 @@ function [img_process,bs,flag]=opc_process(img_process,bs,img_source,img_source_
             flag=false;
             bs(k,4)={length(bs{k,3})};
         else
-            [img_process,bs,flag]=opc_process(img_process,bs,img_source,img_source_i,EPE);
+            [img_process,bs,flag]=opc_process(bs,img_source,img_process,EPE);
         end
     end
     
@@ -359,7 +428,7 @@ end
 function OPC(img_source)
     img_process_o=img_source;
     img_source_i=cut_center_img(img_source);
-    img_process=img_source_i;   % --> img_opc not filtered
+%     img_process=img_source_i;   % --> img_opc not filtered
     % _o后缀是原大小图片、未切割
     % img_source_i 原图片切割后结果
     % img_source_o 切割前，滤波前，一直在变化
@@ -367,7 +436,7 @@ function OPC(img_source)
     
     % to get initial work, sample & stack
     global skip;
-    BW = imbinarize(img_process);
+    BW = imbinarize(img_source_i);
     [B,L] = bwboundaries(BW);
     bs=cell(length(B),4);   % no.|| x  y  stack_to_record_sample index || k*4
     %cell2mat(p(1,1)) to get data /// or bs{k,3}
@@ -389,7 +458,7 @@ function OPC(img_source)
     EPE=cal_EPE(img_source_i,img_filtered);
     
     %%%% cal_min_EPE and its img_process TODO
-    [img_process,bs,flag]=opc_process(img_process,bs,img_source,img_source_i,EPE);  % get: img_process EPE
+    [img_process,bs,flag]=opc_process(bs,img_source,img_source_i,EPE);  % get: img_process EPE
     
 %     global minEPE
 %     % 终止条件：达到minEPE or 全部情况测试完
