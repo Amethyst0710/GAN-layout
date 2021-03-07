@@ -5,8 +5,9 @@
 %% start & global setting
 clc;
 clear all;
+%%
 global test_show_im
-test_show_im=1;
+test_show_im=0;
 global xpcnt;global ypcnt;
 xpcnt=0.33;ypcnt=0.33;
 global skip;global opc_width;
@@ -71,8 +72,12 @@ if test_show_im==1
     show_edge(img_process_cut,'b');
 end
 %% OPC
-OPC(img_target_cut,img_process_cut);
-
+% OPC(img_target_cut,img_process_cut);
+%%%%%%%%%%%%%%%%%%%55test%%%%%%
+close all;
+global ttt
+ttt=0;
+OPC(img_target);
 %%
 % img_process only 0/1
 bw_p=1-logical(img_process);      % 黑白显色
@@ -257,18 +262,54 @@ function img_process=filtering(img_target)
     end
 end
 
-function [img,bs]=cal_opc(img_source,bs)
+function [img,bs]=cal_opc(img_source,bs,type)
+%     1. arr & idx -->p1,p2
+%     2. figure out to this line what is in/out
+%     3. draw_rect to change img
+%     4. save situation to cell bs
 
+    img=img_source; % do nothing
+    
+    % now see that k=1
+    k=1;
+    idx=cell2mat(bs(k,4));
+    % if finished
+    if idx==0
+        return
+    end
+    bs(k,4)={idx-1};
+    arr=cell2mat(bs(k,3));
+ 
+%     -->p1,p2
+%     2. figure out to this line what is in/out
+%     3. draw_rect to change img
+    
+    arr(idx)=type;
+    bs(k,3)={arr};
+
+    
+    
 end
 
 function EPE=cal_EPE(img_source,img_process)
-
+%     EPE=0.3; % <minEPE
+%     EPE=0.6; % >minEPE
+%     EPE=rand(1)
+    global ttt
+    if ttt<25
+        ttt=ttt+1;
+        EPE=1;
+    else
+        EPE=0.2;
+    end
 end
 
-function [img_process,bs]=opc_process(img_process,bs,img_source,img_source_i,EPE)
+function [img_process,bs,flag]=opc_process(img_process,bs,img_source,img_source_i,EPE)
+%     flag=false;   %
     global minEPE
     % 终止条件：达到minEPE or 全部情况测试完
     function flag=types_opc_process(type)
+%         type   %
         [img_process,bs]=cal_opc(img_process,bs,type);
 
         img_process_o=restore_center_img(img_source,img_process);       
@@ -277,17 +318,24 @@ function [img_process,bs]=opc_process(img_process,bs,img_source,img_source_i,EPE
 
         EPE=cal_EPE(img_source_i,img_filtered);
         
-        if( EPE>minEPE || sum(sum(cell2mat(bs(:,3))==0))==0 )  
-            flag=true
-            return
+        % now see that k=1
+        k=1;
+%         bs(k,3)
+        idx=cell2mat(bs(k,4));
+        % sum(sum(cell2mat(bs(k,3))==0))==0 
+        if( EPE<minEPE )  
+            flag=true;
+        elseif( idx==0 )
+            flag=false;
+            bs(k,4)={length(cell2mat(bs(k,3)))};
         else
-            [img_process,bs]=opc_process(img_process,bs,img_source_o,img_source_i,EPE);
+            [img_process,bs,flag]=opc_process(img_process,bs,img_source,img_source_i,EPE);
         end
-        flag=false
     end
     
     for type = [0,1,-1]
         if types_opc_process(type)
+            flag=true;
             return
         end
     end
@@ -313,14 +361,15 @@ function OPC(img_source)
     [B,L] = bwboundaries(BW);
     bs=cell(length(B),4);   % no.|| x  y  stack_to_record_sample index || k*4
     %cell2mat(p(1,1)) to get data
+    % now see that k=1 ---- only has 1 boundary
     for k = 1:length(B)
        boundary = B{k};     %包含最外的矩形框
        xs=boundary(1:skip:length(boundary),2);
        ys=boundary(1:skip:length(boundary),1);
        bs(k,1)={xs};
        bs(k,2)={ys};
-       bs(k,3)={zeros(1,len(xs))};
-       bs(k,4)={len(xs)};
+       bs(k,3)={zeros(1,length(xs))};
+       bs(k,4)={length(xs)};
     end
      
     img_filtered_o=filtering(img_process_o);  % filtering need no cut image    
@@ -329,7 +378,7 @@ function OPC(img_source)
     EPE=cal_EPE(img_source_i,img_filtered);
     
     %%%% cal_min_EPE and its img_process TODO
-    opc_process(img_process,bs,img_source,img_source_i,EPE);  % get: img_process EPE
+    [img_process,bs,flag]=opc_process(img_process,bs,img_source,img_source_i,EPE);  % get: img_process EPE
     
 %     global minEPE
 %     % 终止条件：达到minEPE or 全部情况测试完
@@ -356,6 +405,6 @@ function OPC(img_source)
     show_edge(img_process,'r');
     subplot(1,3,3),imshow(img_filtered,[]);
     show_edge(img_filtered,'r');
-    EPE
+%     EPE
     
 end
