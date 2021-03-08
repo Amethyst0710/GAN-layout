@@ -12,7 +12,7 @@ test_show_im=0;
 global xpcnt;global ypcnt;
 xpcnt=0.33;ypcnt=0.33;
 global skip;global opc_width;
-skip=10;     %采样点间隔
+skip=20;     %采样点间隔
 opc_width=5;
 global minEPE;
 minEPE=0.5;%%%%%%%%%%%%%%%%%%%%%%%%%%%?
@@ -76,6 +76,7 @@ end
 %% OPC
 % OPC(img_target_cut,img_process_cut);
 %%%%%%%%%%%%%%%%%%%55test%%%%%%
+clc;
 close all;
 global ttt
 ttt=0;
@@ -161,10 +162,11 @@ function show_edge(img,color)
     % imshow(BW);
     [B,L] = bwboundaries(BW);
     hold on
+    global skip
     for k = 1:length(B)
        boundary = B{k};     %包含最外的矩形框
        plot(boundary(:,2), boundary(:,1), color, 'LineWidth', 1)    %plot坐标(0,0)左下角
-       skip=10;
+%        skip=10;
        scatter(boundary(1:skip:length(boundary),2), boundary(1:skip:length(boundary),1))    %采样点
     end
 end
@@ -288,7 +290,7 @@ function [img,bs]=cal_opc(img_source,bs,type)
 %     4. save situation to cell bs
 
     img=img_source; % do nothing
-    type
+%     type
     % now see that k=1
     k=1;
     idx=bs{k,4};
@@ -374,7 +376,7 @@ function EPE=cal_EPE(img_source,img_process)
 %     EPE=0.6; % >minEPE
 %     EPE=rand(1)
     global ttt
-    if ttt<125
+    if ttt<35
         ttt=ttt+1;
         EPE=1;
     else
@@ -383,13 +385,16 @@ function EPE=cal_EPE(img_source,img_process)
 end
 
 function [img_process,bs,flag]=opc_process(bs,img_source,img_process_base,EPE)
-%     flag=false;   %
+    flag=false;   %
     global minEPE
+    % now see that k=1
+    k=1;
+    
     % 终止条件：达到minEPE or 全部情况测试完
     function flag=types_opc_process(type)
-%         type   %
+        type   %
         [img_process,bs]=cal_opc(img_process_base,bs,type);
-
+        % 总是多算了一次啊，，
         img_process_o=restore_center_img(img_source,img_process);       
         img_filtered_o=filtering(img_process_o);        
         img_filtered=cut_center_img(img_filtered_o);
@@ -397,18 +402,19 @@ function [img_process,bs,flag]=opc_process(bs,img_source,img_process_base,EPE)
         
         EPE=cal_EPE(img_source_i,img_filtered);
         
-        % now see that k=1
-        k=1;
-%         bs{k,3};
-        idx=bs{k,4};
+%         % now see that k=1
+%         k=1;
+        idx=bs{k,4}     % next 
+        bs{k,3}         % now
         % sum(sum(bs{k,3}==0))==0 
         if( EPE<minEPE )  
             flag=true;
         elseif( idx==0 )
             flag=false;
-            bs(k,4)={length(bs{k,3})};
+%             bs(k,4)={length(bs{k,3})};
         else
             [img_process,bs,flag]=opc_process(bs,img_source,img_process,EPE);
+%             bs(k,4)={bs{k,4}+1};  
         end
     end
     
@@ -417,7 +423,9 @@ function [img_process,bs,flag]=opc_process(bs,img_source,img_process_base,EPE)
             flag=true;
             return
         end
+        bs(k,4)={bs{k,4}+1};
     end
+    
     % if all failed TODO
     
     % cal_opc: choose a line, draw new img, 0
