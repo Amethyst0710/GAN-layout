@@ -12,7 +12,7 @@ test_show_im=0;
 global xpcnt;global ypcnt;
 xpcnt=0.33;ypcnt=0.33;
 global skip;global opc_width;
-skip=20;     %采样点间隔
+skip=30;     %采样点间隔
 opc_width=5;
 global minEPE;
 minEPE=0.5;%%%%%%%%%%%%%%%%%%%%%%%%%%%?
@@ -62,7 +62,7 @@ show_edge(img_target,'r');
 img_process=filtering(img_target);
 % figure,
 % imshow(img_process,[]);
-%% cut center pic
+% cut center pic
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 img_target_cut=cut_center_img(img_target);
 img_process_cut=cut_center_img(img_process);
@@ -77,9 +77,11 @@ end
 % OPC(img_target_cut,img_process_cut);
 %%%%%%%%%%%%%%%%%%%55test%%%%%%
 clc;
-close all;
+% close all;
 global ttt
 ttt=0;
+global test_edge_img
+test_edge_img=img_target_cut;
 OPC(img_target);
 %%
 % img_process only 0/1
@@ -179,7 +181,8 @@ end
 function img=draw_rec(img,x1,y1,x3,y3,z)
 % (i,j)矩阵第i行第j列，等价于MATLAB坐标位置(j,MAMY-i)，设置左上角为(0,0)则(j,i)
 % 现在必须输入坐左上右下or右上左下，以后可以更优化, 检查 ###TODO
-% x,y in plot is diff from row,coloum (x=c, y=r)
+% x,y in plot is diff from row,coloum (x=c, y=r) 
+% 调用时候若输入以右为x,下为y的坐标，img=draw_rec(img,y1,x1,y3,x3,z)
 % function img=draw_rec(img,y1,x1,y3,x3,z)
     [a,b] = size(img);
 
@@ -283,6 +286,29 @@ function img_process=filtering(img_target)
     end
 end
 
+% here x,y means row,col
+function flag=judge_corner(img,x,y)
+    % judge by sum on the pix aroud it. 
+    % standard L should be 4/9, may 4/6, 4/4.(2/6 2/4 ?
+    [a,b] = size(img);
+    xl=check_in_range(x-1,1,a);
+    yl=check_in_range(y-1,1,b);
+    xr=check_in_range(x+1,1,a);
+    yr=check_in_range(y+1,1,b);
+    all=(xr-xl+1)*(yr-yl+1);
+    s=sum(sum(img(xl:xr,yl:yr)));
+    if (sum([s,all]~=[4,9])==0 || ...
+        sum([s,all]~=[4,4])==0 || ...
+        sum([s,all]~=[4,6])==0 || ...
+        sum([s,all]~=[2,6])==0 || ...
+        sum([s,all]~=[2,4])==0 )
+        flag=true;
+    else
+        flag=false;
+    end
+    
+end
+
 function [img,bs]=cal_opc(img_source,bs,type)
 %     1. arr & idx -->p1,p2
 %     2. figure out to this line what is in/out
@@ -361,14 +387,43 @@ function [img,bs]=cal_opc(img_source,bs,type)
         end
     elseif (type~=0)
         % \ / 
-        if type==1;z=on;elseif type==-1;z=off;end
-        img=draw_rec(img,x1,y1,x2,y2,z);
+        if type==1
+%             img=draw_rec(img,x1,y1,x2,y2,on);
+            % 以顶点为中心画方块？%%%%%%%%%%%%%%%%%%%%
+            % 存在问题，判断点刚好是顶点？
+            d=floor(opc_width);
+            
+            % one off, liek L left bottom is on
+            % both two on, liek L right top is on
+            if(img_source(x2,y1)==off | judge_corner(img,x1,y2))
+                % center point is x1,y2
+                img=draw_rec(img,x1-d,y2-d,x1+d,y2+d,on);
+            elseif(img_source(x1,y2)==off | judge_corner(img,x2,y1))
+                % center point is x2,y1
+                img=draw_rec(img,x2-d,y1-d,x2+d,y1+d,on);
+            else
+                disp("both on, & both not corner, cant't judge.")%%%%%%%%%%%%%%%%%%%%%%%%%%%%5
+            end
+            
+        elseif type==-1
+            img=draw_rec(img,x1,y1,x2,y2,off);
+        end
+        
     end
 
     bs(k,4)={idx-1};  
-    arr(idx)=type;
+    arr(idx)=type
     bs(k,3)={arr};
+    
 
+    global test_show_im
+    global test_edge_img
+    if test_show_im==10
+        figure()
+        imshow(img,[]);
+%         show_edge(img,'r');
+        show_edge(test_edge_img,'r');
+    end
 end
 
 function EPE=cal_EPE(img_source,img_process)
@@ -384,37 +439,37 @@ function EPE=cal_EPE(img_source,img_process)
     end
 end
 
-function [img_process,bs,flag]=opc_process(bs,img_source,img_process_base,EPE)
+function [img_process,bs,flag]=opc_process(bs,img_source,img_process_base)
     flag=false;   %
     global minEPE
     % now see that k=1
     k=1;
     
+    img_process=img_process_base;
+    
     % 终止条件：达到minEPE or 全部情况测试完
     function flag=types_opc_process(type)
-        type   %
-        [img_process,bs]=cal_opc(img_process_base,bs,type);
-        % 总是多算了一次啊，，
-        img_process_o=restore_center_img(img_source,img_process);       
-        img_filtered_o=filtering(img_process_o);        
-        img_filtered=cut_center_img(img_filtered_o);
-        img_source_i=cut_center_img(img_source);
-        
-        EPE=cal_EPE(img_source_i,img_filtered);
-        
 %         % now see that k=1
 %         k=1;
-        idx=bs{k,4}     % next 
-        bs{k,3}         % now
+        idx=bs{k,4};     % next 
+%         bs{k,3}         % now
         % sum(sum(bs{k,3}==0))==0 
-        if( EPE<minEPE )  
-            flag=true;
-        elseif( idx==0 )
-            flag=false;
-%             bs(k,4)={length(bs{k,3})};
+        flag=false;
+        if( idx==1 )
+            [img_process,bs]=cal_opc(img_process_base,bs,type);  
+            
+            img_process_o=restore_center_img(img_source,img_process);       
+            img_filtered_o=filtering(img_process_o);        
+            img_filtered=cut_center_img(img_filtered_o);
+            img_source_i=cut_center_img(img_source);
+
+            EPE=cal_EPE(img_source_i,img_filtered); 
+            if( EPE<minEPE )  
+                flag=true;
+            end
         else
-            [img_process,bs,flag]=opc_process(bs,img_source,img_process,EPE);
-%             bs(k,4)={bs{k,4}+1};  
+            [img_process,bs]=cal_opc(img_process_base,bs,type);            
+            [img_process,bs,flag]=opc_process(bs,img_source,img_process);
         end
     end
     
@@ -451,48 +506,39 @@ function OPC(img_source)
     % now see that k=1 ---- only has 1 boundary
     for k = 1:length(B)
        boundary = B{k};     %包含最外的矩形框
-       xs=boundary(1:skip:length(boundary),2);
-       ys=boundary(1:skip:length(boundary),1);
+       % here x,y means row,col
+       xs=boundary(1:skip:length(boundary),1);
+       ys=boundary(1:skip:length(boundary),2);
        bs(k,1)={xs};
        bs(k,2)={ys};
 %        bs(k,1)={boundary(1:skip:length(boundary),:)} %%%%(y,x)
        bs(k,3)={zeros(1,length(xs))};
        bs(k,4)={length(xs)};
     end
-     
-    img_filtered_o=filtering(img_process_o);  % filtering need no cut image    
-    img_filtered=cut_center_img(img_filtered_o);
-    
-    EPE=cal_EPE(img_source_i,img_filtered);
+
+%     img_filtered_o=filtering(img_process_o);  % filtering need no cut image    
+%     img_filtered=cut_center_img(img_filtered_o);
+%     
+%     EPE=cal_EPE(img_source_i,img_filtered);
     
     %%%% cal_min_EPE and its img_process TODO
-    [img_process,bs,flag]=opc_process(bs,img_source,img_source_i,EPE);  % get: img_process EPE
-    
-%     global minEPE
-%     % 终止条件：达到minEPE or 全部情况测试完
-%     while( EPE>minEPE || sum(sum(cell2mat(bs(:,3))==0))==0 )  
-%         [img_process,bs]=cal_opc(img_process,bs);
-%         
-%         img_process_o=restore_center_img(img_source,img_process);       
-%         img_filtered_o=filtering(img_process_o);        
-%         img_filtered=cut_center_img(img_filtered_o);
-% 
-%         EPE=cal_EPE(img_source_i,img_filtered);
-%     end
+    [img_process,bs,flag]=opc_process(bs,img_source,img_source_i);  % get: img_process EPE
     
     % end
     img_process_o=restore_center_img(img_source,img_process);       
     img_filtered_o=filtering(img_process_o);        
     img_filtered=cut_center_img(img_filtered_o);
     
+    EPE=cal_EPE(img_source_i,img_filtered);
+    
     % show result
     figure();
-    subplot(1,2,1),imshow(img_source_i);
+    subplot(1,3,1),imshow(img_source_i);
     show_edge(img_source_i,'r');    
     subplot(1,3,2),imshow(img_process);
     show_edge(img_process,'r');
     subplot(1,3,3),imshow(img_filtered,[]);
     show_edge(img_filtered,'r');
-%     EPE
+    EPE
     
 end
