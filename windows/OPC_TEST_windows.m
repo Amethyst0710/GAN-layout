@@ -430,7 +430,7 @@ end
 
 function [kp,idx,vmin]=find_nearest_value(same,data,cell_list,find_type)
     vmin=1000;idx=-1;kp=-1;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    
+    % idx not impossible except refer -1 wrong
     if find_type=='x'
         x=1;y=2;
     elseif find_type=='y'
@@ -533,8 +533,8 @@ function EPE=cal_EPE(img_source,img_process)
             if idx==-1
                 vmin=not_find_EPE;%%%%%%%%%%;NOT FIND
             end
-            EPE=EPE+vmin        
             
+            EPE=EPE+vmin
         end 
     end    
 
