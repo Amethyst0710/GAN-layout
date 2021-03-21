@@ -76,17 +76,19 @@ end
 %% OPC
 % OPC(img_target_cut,img_process_cut);
 %%%%%%%%%%%%%%%%%%%55test%%%%%%
-clc;
+% clc;
 % close all;
 global ttt
 ttt=0;
 global test_edge_img
 test_edge_img=img_target_cut;
 OPC(img_target);
-%%
-% img_process only 0/1
-bw_p=1-logical(img_process);      % 黑白显色
-imwrite(bw_p,save_p_path,'png');
+% %%
+% close all
+% %%
+% % img_process only 0/1
+% bw_p=1-logical(img_process);      % 黑白显色
+% imwrite(bw_p,save_p_path,'png');
 
 %% show result
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -412,7 +414,7 @@ function [img,bs]=cal_opc(img_source,bs,type)
     end
 
     bs(k,4)={idx-1};  
-    arr(idx)=type
+    arr(idx)=type;
     bs(k,3)={arr};
     
 
@@ -426,17 +428,116 @@ function [img,bs]=cal_opc(img_source,bs,type)
     end
 end
 
+function [kp,idx,vmin]=find_nearest_value(same,data,cell_list,find_type)
+    vmin=1000;idx=-1;kp=-1;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    
+    if find_type=='x'
+        x=1;y=2;
+    elseif find_type=='y'
+        x=2;y=1;
+    end  
+    [a,b]=size(cell_list);
+    for k = 1:a
+        xlist=cell_list{k,x};
+        ylist=cell_list{k,y};
+        
+%         same
+        xx=xlist(ylist==same);% all the possible data
+        if isempty(xx);continue;end
+        [v,i] = min(abs(xx-data));
+        
+%         if find_type=='x'
+%             xx=xlist(ylist==same);% all the possible data
+%             [v,i] = min(abs(xx-data))
+%         elseif find_type=='y'
+%             yy=ylist(xlist==same);% all the possible data
+%             [v,i] = min(abs(yy-data))
+%         end                
+        if v<vmin;vmin=v;idx=i;kp=k;end
+    end
+end
+
 function EPE=cal_EPE(img_source,img_process)
 %     EPE=0.3; % <minEPE
 %     EPE=0.6; % >minEPE
 %     EPE=rand(1)
-    global ttt
-    if ttt<35
-        ttt=ttt+1;
-        EPE=1;
-    else
-        EPE=0.2;
+
+%     global ttt
+%     if ttt<35
+%         ttt=ttt+1;
+%         EPE=1;
+%     else
+%         EPE=0.2;
+%     end
+%     return
+
+
+% 1. get checkpoint in source & process boundaries
+% 2. foreach cpoint find point have same x/y in boundaries
+% 3. calculate EPE
+
+    global skip;
+    BW = imbinarize(img_source);
+    [B,L] = bwboundaries(BW);
+    BWp = imbinarize(img_process);
+    [Bp,Lp] = bwboundaries(BWp);
+    bs=cell(length(B),2);   % no.|| x  y || k*2
+    bsp=cell(length(Bp),2);   % no.|| x  y || k*2
+    %cell2mat(p(1,1)) to get data /// or bs{k,3}
+    % now see that k=1 ---- only has 1 boundary
+    for k = 1:length(B)
+       boundary = B{k};     %包含最外的矩形框
+       % here x,y means row,col
+       xs=boundary(1:skip:length(boundary),1);
+       ys=boundary(1:skip:length(boundary),2);
+       bs(k,1)={xs};
+       bs(k,2)={ys};
     end
+    for k = 1:length(Bp)
+       boundary = Bp{k};     %包含最外的矩形框
+       % here x,y means row,col
+       xs=boundary(:,1);
+       ys=boundary(:,2);
+       bsp(k,1)={xs};
+       bsp(k,2)={ys};
+    end
+    
+    EPE=0;
+    not_find_EPE=10; %%%%%%%%%%%%%%%%%%%
+    [a,b]=size(bs);
+    for k = 1:a
+        % bs(k,1)={xs};bs(k,2)={ys};
+        xs=bs{k,1};
+        ys=bs{k,2};
+        for i = 1:length(bs{k,1})
+            if i==length(bs{k,1});j=1;else;j=i+1;end
+            % x-same ----,find nearest y; y...
+            % xy-diff, 
+            if xs(i)==xs(j)
+%                 [kp,idx,vmin]=find_nearest_value(xs(i),ys(i),bsp,'y');
+                [kp,idx,vmin]=find_nearest_value(ys(i),xs(i),bsp,'x');
+            elseif ys(i)==ys(j)
+%                 [kp,idx,vmin]=find_nearest_value(ys(i),xs(i),bsp,'x');
+                [kp,idx,vmin]=find_nearest_value(xs(i),ys(i),bsp,'y');
+            else
+                % 4 situation, 2 class
+                if(xs(i)>xs(j) && ys(i)>ys(j)) || (xs(i)<xs(j) && ys(i)<ys(j))
+                    % L or -|
+                    [kp,idx,vmin]=find_nearest_value(ys(i),xs(i),bsp,'x');
+                else
+                    % |- or _|
+                    [kp,idx,vmin]=find_nearest_value(xs(i),ys(i),bsp,'y');
+                end
+            end
+            
+            if idx==-1
+                vmin=not_find_EPE;%%%%%%%%%%;NOT FIND
+            end
+            EPE=EPE+vmin        
+            
+        end 
+    end    
+
 end
 
 function [img_process,bs,flag]=opc_process(bs,img_source,img_process_base)
@@ -456,6 +557,7 @@ function [img_process,bs,flag]=opc_process(bs,img_source,img_process_base)
         % sum(sum(bs{k,3}==0))==0 
         flag=false;
         if( idx==1 )
+            %   目前img_process_base不是真正的base，实际还是依据img_source
             [img_process,bs]=cal_opc(img_process_base,bs,type);  
             
             img_process_o=restore_center_img(img_source,img_process);       
@@ -505,15 +607,23 @@ function OPC(img_source)
     %cell2mat(p(1,1)) to get data /// or bs{k,3}
     % now see that k=1 ---- only has 1 boundary
     for k = 1:length(B)
-       boundary = B{k};     %包含最外的矩形框
-       % here x,y means row,col
-       xs=boundary(1:skip:length(boundary),1);
-       ys=boundary(1:skip:length(boundary),2);
-       bs(k,1)={xs};
-       bs(k,2)={ys};
-%        bs(k,1)={boundary(1:skip:length(boundary),:)} %%%%(y,x)
-       bs(k,3)={zeros(1,length(xs))};
-       bs(k,4)={length(xs)};
+        boundary = B{k};     %包含最外的矩形框
+        % here x,y means row,col
+        xs=boundary(1:skip:length(boundary),1);
+        ys=boundary(1:skip:length(boundary),2);
+        
+%         a=[xs(1),ys(1);xs(end),ys(end)];
+%         d=pdist(a,'euclidean')
+%         if d<skip/2
+%             ;
+%         end
+                
+        bs(k,1)={xs};
+        bs(k,2)={ys};
+%         bs(k,1)={boundary(1:skip:length(boundary),:)} %%%%(y,x)
+        bs(k,3)={zeros(1,length(xs))};
+        bs(k,4)={length(xs)};
+       
     end
 
 %     img_filtered_o=filtering(img_process_o);  % filtering need no cut image    
