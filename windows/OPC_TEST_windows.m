@@ -2,7 +2,7 @@
 %%%% this file works on windows for process sth.
 %% not from json but draw myself for test
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-figure()
+
 %% start & global setting
 clc;
 clear all;
@@ -12,10 +12,10 @@ test_show_im=0;
 global xpcnt;global ypcnt;
 xpcnt=0.33;ypcnt=0.33;
 global skip;global opc_width;
-skip=30;     %采样点间隔
+skip=5;     %采样点间隔
 opc_width=5;
-global minEPE;
-minEPE=0.5;%%%%%%%%%%%%%%%%%%%%%%%%%%%?
+global minEPE_rate;
+minEPE_rate=0.1;%%%%%%%%%%%%%%%%%%%%%%%%%%%?
 %% original pic draw
 w=200;h=200;
 img_target=zeros(w,h);
@@ -56,6 +56,7 @@ img_target_wb=1-img_target;
 % img是黑0白1，现取反，为看起来方便画图区域应该是黑
 % ？取消这步之后没有边框问题了,
 % 所以实际处理时应该白1表示画了的掩膜图形,即处理过程中显示的是黑底
+figure();
 imshow(img_target_wb);
 show_edge(img_target,'r');
 %% 低通滤波
@@ -193,11 +194,12 @@ function img=draw_rec(img,x1,y1,x3,y3,z)
     y1=check_in_range(y1,1,b);
     y3=check_in_range(y3,1,b);
     
-    if(x1>x3 && y1>y3)
+    if(x1>x3 && y1>y3)  % 右上左下
         t=x1;x1=x3;x3=t;
         t=y1;y1=y3;y3=t;
     end
 
+    % 左上右下
     for i=x1:1:x3
         for j=y1:1:y3
             img(i,j)=z;
@@ -317,14 +319,20 @@ function [img,bs]=cal_opc(img_source,bs,type)
 %     3. draw_rect to change img
 %     4. save situation to cell bs
 
-    img=img_source; % do nothing
-%     type
+
     % now see that k=1
     k=1;
     idx=bs{k,4};
     % if finished
     if idx==0
         return
+    end
+    
+%     type
+    img=img_source; % do nothing
+    if type==0; 
+        bs(k,4)={idx-1};  
+        return; 
     end
     arr=bs{k,3};
     
@@ -379,13 +387,13 @@ function [img,bs]=cal_opc(img_source,bs,type)
         end
         switch (type+direc*10)
             case 1  % type=1, direc=0 draw right on
-                img=draw_rec(img,x1+opc_width,y1,x2,y2,on);
+                img=draw_rec(img,x1,y1+opc_width,x2,y2,on);
             case -1 % type=-1, direc=0 draw left off
-                img=draw_rec(img,x1-opc_width,y1,x2,y2,off);
+                img=draw_rec(img,x1,y1-opc_width,x2,y2,off);
             case 11 % type=1, direc=1 draw left on
-                img=draw_rec(img,x1-opc_width,y1,x2,y2,on);
+                img=draw_rec(img,x1,y1-opc_width,x2,y2,on);
             case 9  % type=-1, direc=1 draw right off
-                img=draw_rec(img,x1+opc_width,y1,x2,y2,off);
+                img=draw_rec(img,x1,y1+opc_width,x2,y2,off);
         end
     elseif (type~=0)
         % \ / 
@@ -417,10 +425,11 @@ function [img,bs]=cal_opc(img_source,bs,type)
     arr(idx)=type;
     bs(k,3)={arr};
     
-
+    
     global test_show_im
     global test_edge_img
     if test_show_im==10
+        hi=input('hi='); %%%%%
         figure()
         imshow(img,[]);
 %         show_edge(img,'r');
@@ -458,20 +467,6 @@ function [kp,idx,vmin]=find_nearest_value(same,data,cell_list,find_type)
 end
 
 function EPE=cal_EPE(img_source,img_process)
-%     EPE=0.3; % <minEPE
-%     EPE=0.6; % >minEPE
-%     EPE=rand(1)
-
-%     global ttt
-%     if ttt<35
-%         ttt=ttt+1;
-%         EPE=1;
-%     else
-%         EPE=0.2;
-%     end
-%     return
-
-
 % 1. get checkpoint in source & process boundaries
 % 2. foreach cpoint find point have same x/y in boundaries
 % 3. calculate EPE
@@ -534,60 +529,67 @@ function EPE=cal_EPE(img_source,img_process)
                 vmin=not_find_EPE;%%%%%%%%%%;NOT FIND
             end
             
-            EPE=EPE+vmin
+            EPE=EPE+vmin;
         end 
     end    
 
 end
 
-function [img_process,bs,flag]=opc_process(bs,img_source,img_process_base)
+function [img_process,bs,flag]=opc_process(bs,img_source,img_process_base,EPE_min)
     flag=false;   %
-    global minEPE
+    global minEPE_rate
     % now see that k=1
     k=1;
     
     img_process=img_process_base;
+    %%%%%%%%%%%%%% above seemed error
+    % now see that k=1
+    k=1;
+    idx=bs{k,4};     % next 
+    if( idx==0 )
+        return
+    end
     
-    % 终止条件：达到minEPE or 全部情况测试完
-    function flag=types_opc_process(type)
-%         % now see that k=1
-%         k=1;
-        idx=bs{k,4};     % next 
-%         bs{k,3}         % now
-        % sum(sum(bs{k,3}==0))==0 
-        flag=false;
-        if( idx==1 )
-            %   目前img_process_base不是真正的base，实际还是依据img_source
-            [img_process,bs]=cal_opc(img_process_base,bs,type);  
-            
+    global opc_width
+    len=length(bs{k,3});  
+    EPE_cmp=minEPE_rate*len*opc_width;
+        
+%     flag=false;
+    choose_type=0;  % -1
+%     if( EPE_min<=EPE_cmp  )  
+%         flag=true;
+%         return
+%     end   
+    
+    for type = [0, 1,-1]
+        if(type==0)
+            EPE=EPE_min;
+        else
+            [img_process,bs]=cal_opc(img_process_base,bs,type);
+
             img_process_o=restore_center_img(img_source,img_process);       
             img_filtered_o=filtering(img_process_o);        
             img_filtered=cut_center_img(img_filtered_o);
             img_source_i=cut_center_img(img_source);
 
-            EPE=cal_EPE(img_source_i,img_filtered); 
-            if( EPE<minEPE )  
-                flag=true;
-            end
-        else
-            [img_process,bs]=cal_opc(img_process_base,bs,type);            
-            [img_process,bs,flag]=opc_process(bs,img_source,img_process);
+            EPE=cal_EPE(img_source_i,img_filtered)
+            % already index-1
+            idx=bs{k,4};
+            bs(k,4)={idx+1};  
         end
-    end
-    
-    for type = [0,1,-1]
-        if types_opc_process(type)
+        if( EPE<EPE_cmp  )  
             flag=true;
-            return
-        end
-        bs(k,4)={bs{k,4}+1};
-    end
+        elseif(EPE < EPE_min)
+            EPE_min=EPE;choose_type=type;
+        end  
+    end    
     
-    % if all failed TODO
+    if flag;return;end
     
-    % cal_opc: choose a line, draw new img, 0
-    % cal_opc: choose a line, draw new img, 1
-    % cal_opc: choose a line, draw new img, -1
+    flag=false;
+    [img_process,bs]=cal_opc(img_process_base,bs,choose_type);
+    [img_process,bs,flag]=opc_process(bs,img_source,img_process,EPE_min);
+
 end
 
 function OPC(img_source)
@@ -626,13 +628,20 @@ function OPC(img_source)
        
     end
 
-%     img_filtered_o=filtering(img_process_o);  % filtering need no cut image    
-%     img_filtered=cut_center_img(img_filtered_o);
-%     
-%     EPE=cal_EPE(img_source_i,img_filtered);
+    img_filtered_o=filtering(img_process_o);  % filtering need no cut image    
+    img_filtered=cut_center_img(img_filtered_o);
     
+    EPE=cal_EPE(img_source_i,img_filtered);
+    
+    EPE_min=EPE;
     %%%% cal_min_EPE and its img_process TODO
-    [img_process,bs,flag]=opc_process(bs,img_source,img_source_i);  % get: img_process EPE
+    [img_process,bs,flag]=opc_process(bs,img_source,img_source_i,EPE_min);  % get: img_process EPE
+    
+    if flag
+        % find < EPE_min
+    else
+        % this is the minest
+    end
     
     % end
     img_process_o=restore_center_img(img_source,img_process);       
