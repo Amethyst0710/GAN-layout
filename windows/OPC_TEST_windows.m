@@ -6,13 +6,14 @@
 %% start & global setting
 clc;
 clear all;
+close all;
 %% config
 global test_show_im
 test_show_im=0;
 global xpcnt;global ypcnt;
 xpcnt=0.33;ypcnt=0.33;
 global skip;global opc_width;
-skip=5;     %采样点间隔
+skip=10;     %采样点间隔
 opc_width=5;
 global minEPE_rate;
 minEPE_rate=0.1;%%%%%%%%%%%%%%%%%%%%%%%%%%%?
@@ -20,17 +21,19 @@ minEPE_rate=0.1;%%%%%%%%%%%%%%%%%%%%%%%%%%%?
 w=200;h=200;
 img_target=zeros(w,h);
 % in draw sys -->x  |y
-% draw rec L-1
+% draw rec -| 1-
 w1=20;h1=50;
 x1=70;y1=70;
 x2=x1+w1;y2=y1+h1;
 img_target=draw_rec(img_target,x1,y1,x2,y2,1);  %%%%%%%
-% draw rec L-2
+% draw rec -| 2|
 w2=50;h2=20;
 x3=x2;y4=y2;
 x4=x3+w2;y3=y4-h2;
 x2=70;y2=60; %L横线的右上角
 img_target=draw_rec(img_target,x3,y3,x4,y4,1);
+
+img_target=draw_rec(img_target,105,90,120,110,1);  %%%%%%%
 
 img_target=cloned_part_img(img_target,140,20,img_target,x1,y1,40,40);
 img_target=cloned_part_img(img_target,20,140,img_target,x1,y1,40,60);
@@ -58,7 +61,7 @@ img_target_wb=1-img_target;
 % 所以实际处理时应该白1表示画了的掩膜图形,即处理过程中显示的是黑底
 figure();
 imshow(img_target_wb);
-show_edge(img_target,'r');
+show_edge(img_target,'r',true);
 %% 低通滤波
 img_process=filtering(img_target);
 % figure,
@@ -70,9 +73,9 @@ img_process_cut=cut_center_img(img_process);
 if test_show_im==1
     figure()
     subplot(1,2,1),imshow(img_target_cut);
-    show_edge(img_target_cut,'r');
+    show_edge(img_target_cut,'r',true);
     subplot(1,2,2),imshow(img_process_cut,[]);
-    show_edge(img_process_cut,'b');
+    show_edge(img_process_cut,'b',true);
 end
 %% OPC
 % OPC(img_target_cut,img_process_cut);
@@ -95,9 +98,9 @@ OPC(img_target);
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % figure('name','result','color','w'),
-% show_edge(img_process,'b');
+% show_edge(img_process,'b',true);
 % % 原图形轮廓
-% show_edge(img_target,'r');
+% show_edge(img_target,'r',true);
 % set(gca,'YDir','reverse');        %将x轴方向设置为反向(从上到下递增)。
 % axis equal;
 % axis off;
@@ -162,17 +165,18 @@ function data_cell=read_data_from(fpath)
 end         % end of function :  read_data_from
 
 %轮廓提取
-function show_edge(img,color)
+function show_edge(img,color,is_scatter)
     BW = imbinarize(img);
     % imshow(BW);
     [B,L] = bwboundaries(BW);
     hold on
     global skip
     for k = 1:length(B)
-       boundary = B{k};     %包含最外的矩形框
-       plot(boundary(:,2), boundary(:,1), color, 'LineWidth', 1)    %plot坐标(0,0)左下角
-%        skip=10;
-       scatter(boundary(1:skip:length(boundary),2), boundary(1:skip:length(boundary),1))    %采样点
+        boundary = B{k};     %包含最外的矩形框
+        plot(boundary(:,2), boundary(:,1), color, 'LineWidth', 1)    %plot坐标(0,0)左下角
+        if is_scatter
+            scatter(boundary(1:skip:length(boundary),2), boundary(1:skip:length(boundary),1)) %采样点
+        end
     end
 end
 
@@ -432,8 +436,8 @@ function [img,bs]=cal_opc(img_source,bs,type)
         hi=input('hi='); %%%%%
         figure()
         imshow(img,[]);
-%         show_edge(img,'r');
-        show_edge(test_edge_img,'r');
+%         show_edge(img,'r',true);
+        show_edge(test_edge_img,'r',true);
     end
 end
 
@@ -630,7 +634,7 @@ function OPC(img_source)
 
     img_filtered_o=filtering(img_process_o);  % filtering need no cut image    
     img_filtered=cut_center_img(img_filtered_o);
-    
+    fff=img_filtered;
     EPE=cal_EPE(img_source_i,img_filtered);
     
     EPE_min=EPE;
@@ -653,11 +657,19 @@ function OPC(img_source)
     % show result
     figure();
     subplot(1,3,1),imshow(img_source_i);
-    show_edge(img_source_i,'r');    
+    show_edge(img_source_i,'r',true);   
+%     show_edge(fff,'g',false); 
+    
     subplot(1,3,2),imshow(img_process);
-    show_edge(img_process,'r');
-    subplot(1,3,3),imshow(img_filtered,[]);
-    show_edge(img_filtered,'r');
+    show_edge(img_process,'g',false);
+    show_edge(img_source_i,'r',false);
+    
+%     img_target_wb=1-img_filtered;% img是黑0白1，现取反，为看起来方便画图区域应该是黑
+%     subplot(1,3,3),imshow(img_target_wb,[]);
+%     show_edge(img_source_i,'r',false);
+    subplot(1,3,3),imshow(img_filtered,[]); % processed img filter
+    show_edge(img_source_i,'r',false);  % original img
+    show_edge(fff,'g',false);       % original img filtered
     EPE
     
 end
