@@ -3,7 +3,7 @@
 # 目录结构
 
 cut
-├──README.md
+├──1_CUT_CLIP.md
 ├── clip.py
 ├── coor
 ├── cut-clips-from-huge-oasis
@@ -92,11 +92,11 @@ echo "step-4: matlab read from json, resize and process "
 ## 结果
 **cut** 结果将如下：
 
-![image-20201228153048600](README.assets/image-20201225143848229.png)
+![image-20201228153048600](1_CUT_CLIP.assets/image-20201225143848229.png)
 
 截自：
 
-![image-20201228153048600](README.assets/image-20201225144147033.png)
+![image-20201228153048600](1_CUT_CLIP.assets/image-20201225144147033.png)
 
 
 
@@ -104,7 +104,7 @@ echo "step-4: matlab read from json, resize and process "
 
 左边是切割结果，右边是低通滤波结果。（这里白色为背景，黑色是画图部分）
 
-![image-20201230152950298](README.assets/image-20201230152950298.png)
+![image-20201230152950298](1_CUT_CLIP.assets/image-20201230152950298.png)
 
 
 
@@ -112,7 +112,7 @@ echo "step-4: matlab read from json, resize and process "
 
 执行gds2ascii.py脚本后还会在./ascii文件夹中生成每个gds文件对应的.json文件（实际上并不是标准的json格式），用于描述版图的多边形信息，其中X，Y为版图中每个多边形的XY坐标，可用于下一步MATLAB读入绘图。其中文件如下：
 
-![image-20201228153048600](README.assets/image-20201225155459250.png)
+![image-20201228153048600](1_CUT_CLIP.assets/image-20201225155459250.png)
 
 
 
