@@ -13,11 +13,11 @@ test_show_im=10;
 % 0 not showed, 1 show all filtered, 
 % 2 show all opc process; 10 only show final result & original pic  
 global xpcnt;global ypcnt;
-xpcnt=0.33;ypcnt=0.33;
+% xpcnt=0.33;ypcnt=0.33;
 xpcnt=0.5;ypcnt=0.5;
 global skip;global opc_width;
-skip=5;     %采样点间隔
-opc_width=5;
+skip=10;     %采样点间隔
+opc_width=10;
 global minEPE_rate;
 minEPE_rate=0.1;%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% for test ways
@@ -404,7 +404,7 @@ function [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,width)
         if(x1==a||x1==1);flag=false;return;end     % 边缘不画
         xx=x1+width-1; %%%%%%%%%%%%%%%%%%%%
         xx=check_in_range(xx,1,a);
-        if(img(xx,floor((y1+y2)/2))==on)
+        if(img_source_i(xx,floor((y1+y2)/2))==on)
             % down is on
             direc=1;
         else
@@ -427,7 +427,7 @@ function [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,width)
         if(y1==b||y1==1);flag=false;return;end     % 边缘不画
         yy=y1+width-1; %%%%%%%%%%%%%%%%%%%%
         yy=check_in_range(yy,1,b);
-        if(img(floor((x1+x2)/2),yy)==on)
+        if(img_source_i(floor((x1+x2)/2),yy)==on)
             % right is on
             direc=1;
         else
@@ -446,7 +446,7 @@ function [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,width)
             case 9  % type=-1, direc=1 draw right off
                 img=draw_rec(img,x1+fit,y1+width,x2,y2,off);
         end
-    elseif (type~=0)
+    elseif (type~=0)    % 理论0上不会传进来
         % \ / 
         if type==1
             f=on;fn=off;
@@ -462,17 +462,18 @@ function [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,width)
     
         % one off, liek L left bottom is on
         % both two on, liek L right top is on
-        if(img(x2,y1)==fn || judge_corner(img_source_i,x1,y2))
+        if(img_source_i(x2,y1)==fn || judge_corner(img_source_i,x1,y2))
             if ismember([x1,y2],corner,'rows');flag=false;return;end % 边缘不画
             % center point is x1,y2
             img=draw_rec(img,x1-d,y2-d,x1+d,y2+d,f);
-        elseif(img(x1,y2)==fn || judge_corner(img_source_i,x2,y1))
+        elseif(img_source_i(x1,y2)==fn || judge_corner(img_source_i,x2,y1))
             if ismember([x2,y1],corner,'rows');flag=false;return;end % 边缘不画
             % center point is x2,y1
             img=draw_rec(img,x2-d,y1-d,x2+d,y1+d,f);
         else
             disp("both on, & both not corner, cant't judge.");%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             disp({x1,y1;x2,y2});disp(width);disp(type);
+            flag=false;
 %                 judge_corner(img,x2,y1)
 %             judge_corner(img,x1,y2)
             %%%%%%%%%%%%%% TODO 
@@ -573,7 +574,7 @@ function EPE=cal_EPE(img_source,img_process)
             
             
             if idx==-1 || vmin>=opc_width   % not find
-                vmin=not_find_EPE;%%%%%%%%%%;NOT FIND
+                vmin=not_find_EPE;%%%%%%%%%%;NOT FIND   TODO
             end
             
             EPE=EPE+vmin;
