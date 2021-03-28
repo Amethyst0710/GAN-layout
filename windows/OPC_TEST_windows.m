@@ -20,6 +20,15 @@ skip=5;     %采样点间隔
 opc_width=5;
 global minEPE_rate;
 minEPE_rate=0.1;%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% for test ways
+% if idx==2
+%     input('k');
+%     imshow(img_filtered,[]);
+% end
+% idx           
+% if idx==2;disp(w);disp(EPE_w);end
+% X = ['w=',num2str(type*w),',EPE_w=',num2str(EPE_w),',EPE_min_w=',num2str(EPE_min_w),',EPE_cmp',num2str(EPE_cmp)];
+% disp(X)
 %% original pic draw
 w=200;h=200;
 img_target=zeros(w,h);
@@ -627,8 +636,8 @@ function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_b
                 EPE_w=cal_EPE(img_source_i,img_filtered);
 %                 idx           
 %                 if idx==2;disp(w);disp(EPE_w);end
-                X = ['w=',num2str(type*w),',EPE_w=',num2str(EPE_w),',EPE_min_w=',num2str(EPE_min_w),',EPE_cmp',num2str(EPE_cmp)];
-                disp(X)
+%                 X = ['w=',num2str(type*w),',EPE_w=',num2str(EPE_w),',EPE_min_w=',num2str(EPE_min_w),',EPE_cmp',num2str(EPE_cmp)];
+%                 disp(X)
                 if( EPE_w<EPE_cmp  ) 
                     disp('EPE_w<EPE_cmp')
                     choose_w=w;EPE_min_w=EPE_w;flag=true;
