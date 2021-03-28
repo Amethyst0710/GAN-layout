@@ -16,8 +16,8 @@ global xpcnt;global ypcnt;
 xpcnt=0.33;ypcnt=0.33;
 xpcnt=0.5;ypcnt=0.5;
 global skip;global opc_width;
-skip=3;     %采样点间隔
-opc_width=3;
+skip=5;     %采样点间隔
+opc_width=5;
 global minEPE_rate;
 minEPE_rate=0.1;%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% original pic draw
@@ -191,9 +191,10 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 function img=draw_rec(img,x1,y1,x3,y3,z)
 % (i,j)矩阵第i行第j列，等价于MATLAB坐标位置(j,MAMY-i)，设置左上角为(0,0)则(j,i)
-% 输入坐左上右下or右上左下
+% 输入坐标四种都可       
 % x,y in plot is diff from row,coloum (x=c, y=r) 
 % 调用时候若输入以右为x,下为y的坐标，img=draw_rec(img,y1,x1,y3,x3,z)
+% 但实际画的时候会少画一个点以此避免重叠的问题，
 % function img=draw_rec(img,y1,x1,y3,x3,z)
     [a,b] = size(img);
 
@@ -202,10 +203,16 @@ function img=draw_rec(img,x1,y1,x3,y3,z)
     y1=check_in_range(y1,1,b);
     y3=check_in_range(y3,1,b);
     
-    if(x1>x3 && y1>y3)  % 右上左下
+    
+    if(x1>x3 && y1>y3)  % 右下左上
         t=x1;x1=x3;x3=t;
         t=y1;y1=y3;y3=t;
+    elseif(x1<x3 && y1>y3)  % 右上左下
+        t=y1;y1=y3;y3=t;
+    elseif(x1>x3 && y1<y3)  % 左下右上
+        t=x1;x1=x3;x3=t;
     end
+    
 
     % 左上右下
     for i=x1:1:x3
@@ -309,30 +316,34 @@ function flag=judge_corner(img,x,y)
     yr=check_in_range(y+1,1,b);
     all=(xr-xl+1)*(yr-yl+1);
     s=sum(sum(img(xl:xr,yl:yr)));
-    if (sum([s,all]~=[4,9])==0 || ...
-        sum([s,all]~=[4,4])==0 || ...
-        sum([s,all]~=[4,6])==0 || ...
-        sum([s,all]~=[2,6])==0 || ...
-        sum([s,all]~=[2,4])==0 )
+%     if (sum([s,all]~=[4,9])==0 || ...
+%         sum([s,all]~=[4,4])==0 || ...
+%         sum([s,all]~=[4,6])==0 || ...
+%         sum([s,all]~=[2,6])==0 || ...
+%         sum([s,all]~=[2,4])==0 )
+
+
+    situations=[[4,9];[4,4];[4,6];[2,6];[2,4]];
+    if ismember([s,all],situations,'rows')
+%     if (isequal([s,all],[4,9])|| ...
+%         isequal([s,all],[4,4])||...
+%         isequal([s,all],[4,6])||...
+%         isequal([s,all],[2,6])||...
+%         isequal([s,all],[2,4]))
         flag=true;
     else
         flag=false;
     end
-    if(x==21 && y== 71)
-        s
-        all
-    end
 end
 
-function [img,bs]=cal_opc(img_source,bs,type,k)
+function [img,flag]=cal_opc_w(img,img_source_i,bs,type,k,w)
+% do the opc according to the current idx
 %     1. arr & idx -->p1,p2
 %     2. figure out to this line what is in/out
 %     3. draw_rect to change img
 %     4. save situation to cell bs
-
-
-    % now see that k=1
-%     k=1;
+    flag=true;
+    % img is the base of cal_opc & return
     idx=bs{k,4};
     % if finished
     if idx==0
@@ -340,12 +351,9 @@ function [img,bs]=cal_opc(img_source,bs,type,k)
     end
     
 %     type
-    img=img_source; % do nothing
     if type==0; 
-        bs(k,4)={idx-1};  
         return; 
     end
-    arr=bs{k,3};
     
     % idx in (1~length)
     x1=bs{k,1}(idx);
@@ -353,59 +361,81 @@ function [img,bs]=cal_opc(img_source,bs,type,k)
     if idx==1
         idx2=length(bs{k,3});   % if last one
     else
-        idx2=idx-1;
+        idx2=idx-1; % idx的顺时针方向的第一个（倒退一个
     end
     x2=bs{k,1}(idx2);
     y2=bs{k,2}(idx2);
-        
-    on=1;off=0;
-    global opc_width
-    [a,b] = size(img);
-%     2. figure out to this line what is in/out
-%     3. draw_rect to change img
+
     % here x,y means row,col
+%     % if 2 point already no
+%     if img(x1,y1)==off && img(x2,y2)==off
+%         return
+%     end
     
+    %%%%%%%%%%%%%%%%%%%%%%
+    [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,w);
+    
+    global test_show_im
+    global test_edge_img
+    if test_show_im==2
+        figure()
+        imshow(img,[]);
+%         show_edge(img,'r',true);
+        show_edge(test_edge_img,'r',true);
+    end
+end
+
+function [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,width)
+    [a,b] = size(img);
+    on=1;off=0;
+    flag=true;
+    %%%%%%%%%%TODO, 加一条，边缘不画
     if(x1==x2)
         % ——
-        xx=x1+opc_width-1; %%%%%%%%%%%%%%%%%%%%
+        if(x1==a||x1==1);flag=false;return;end     % 边缘不画
+        xx=x1+width-1; %%%%%%%%%%%%%%%%%%%%
         xx=check_in_range(xx,1,a);
-        if(img_source(xx,floor((y1+y2)/2))==on)
+        if(img(xx,floor((y1+y2)/2))==on)
             % down is on
             direc=1;
         else
             % up is on
             direc=0;
         end
+        if(y1<y2);fit=1;else;fit=-1;end  % 调整重叠问题
         switch (type+direc*10)
             case 1  % type=1, direc=0 draw down on
-                img=draw_rec(img,x1+opc_width,y1,x2,y2,on);
+                img=draw_rec(img,x1+width,y1+fit,x2,y2,on);
             case -1 % type=-1, direc=0 draw up off
-                img=draw_rec(img,x1-opc_width,y1,x2,y2,off);
+                img=draw_rec(img,x1-width,y1+fit,x2,y2,off);
             case 11 % type=1, direc=1 draw up on
-                img=draw_rec(img,x1-opc_width,y1,x2,y2,on);
+                img=draw_rec(img,x1-width,y1+fit,x2,y2,on);
             case 9  % type=-1, direc=1 draw down off
-                img=draw_rec(img,x1+opc_width,y1,x2,y2,off);
+                img=draw_rec(img,x1+width,y1+fit,x2,y2,off);
         end
     elseif(y1==y2)
         % |
-        yy=y1+opc_width-1; %%%%%%%%%%%%%%%%%%%%
+        if(y1==b||y1==1);flag=false;return;end     % 边缘不画
+        yy=y1+width-1; %%%%%%%%%%%%%%%%%%%%
         yy=check_in_range(yy,1,b);
-        if(img_source(floor((x1+x2)/2),yy)==on)
+        if(img(floor((x1+x2)/2),yy)==on)
             % right is on
             direc=1;
         else
             % left is on
             direc=0;
         end
+        if(x1<x2);fit=1;else;fit=-1;end  % 调整重叠问题
+%         type+direc*10
         switch (type+direc*10)
             case 1  % type=1, direc=0 draw right on
-                img=draw_rec(img,x1,y1+opc_width,x2,y2,on);
+                img=draw_rec(img,x1+fit,y1+width,x2,y2,on);
             case -1 % type=-1, direc=0 draw left off
-                img=draw_rec(img,x1,y1-opc_width,x2,y2,off);
+                img=draw_rec(img,x1+fit,y1-width,x2,y2,off);
             case 11 % type=1, direc=1 draw left on
-                img=draw_rec(img,x1,y1-opc_width,x2,y2,on);
+                img=draw_rec(img,x1+fit,y1-width,x2,y2,on);
             case 9  % type=-1, direc=1 draw right off
-                img=draw_rec(img,x1,y1+opc_width,x2,y2,off);
+                img=draw_rec(img,x1+fit,y1+width,x2,y2,off);
         end
     elseif (type~=0)
         % \ / 
@@ -417,60 +447,28 @@ function [img,bs]=cal_opc(img_source,bs,type,k)
 %         img=draw_rec(img,x1,y1,x2,y2,on);
         % 以顶点为中心画方块？%%%%%%%%%%%%%%%%%%%%
         % 存在问题，判断点刚好是顶点？
-        d=floor(opc_width);
+        d=floor(width);
 
+        corner=[[1,b];[a,b];[a,1];[1,1]]; % 边缘不画
+    
         % one off, liek L left bottom is on
         % both two on, liek L right top is on
-        if(img_source(x2,y1)==fn || judge_corner(img,x1,y2))
+        if(img(x2,y1)==fn || judge_corner(img_source_i,x1,y2))
+            if ismember([x1,y2],corner,'rows');flag=false;return;end % 边缘不画
             % center point is x1,y2
             img=draw_rec(img,x1-d,y2-d,x1+d,y2+d,f);
-        elseif(img_source(x1,y2)==fn || judge_corner(img,x2,y1))
+        elseif(img(x1,y2)==fn || judge_corner(img_source_i,x2,y1))
+            if ismember([x2,y1],corner,'rows');flag=false;return;end % 边缘不画
             % center point is x2,y1
             img=draw_rec(img,x2-d,y1-d,x2+d,y1+d,f);
         else
             disp("both on, & both not corner, cant't judge.");%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-            disp({x1,y1;x2,y2});
-            judge_corner(img,x2,y1)
+            disp({x1,y1;x2,y2});disp(width);disp(type);
+%                 judge_corner(img,x2,y1)
 %             judge_corner(img,x1,y2)
             %%%%%%%%%%%%%% TODO 
         end
-        
-%         if type==1
-% %             img=draw_rec(img,x1,y1,x2,y2,on);
-%             % 以顶点为中心画方块？%%%%%%%%%%%%%%%%%%%%
-%             % 存在问题，判断点刚好是顶点？
-%             d=floor(opc_width);
-%             
-%             % one off, liek L left bottom is on
-%             % both two on, liek L right top is on
-%             if(img_source(x2,y1)==off | judge_corner(img,x1,y2))
-%                 % center point is x1,y2
-%                 img=draw_rec(img,x1-d,y2-d,x1+d,y2+d,on);
-%             elseif(img_source(x1,y2)==off | judge_corner(img,x2,y1))
-%                 % center point is x2,y1
-%                 img=draw_rec(img,x2-d,y1-d,x2+d,y1+d,on);
-%             else
-%                 disp("both on, & both not corner, cant't judge.");%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%                 %%%%%%%%%%%%%% TODO 
-%             end
-%             
-%         elseif type==-1
-%             img=draw_rec(img,x1,y1,x2,y2,off);
-%         end
-        
-    end
 
-    bs(k,4)={idx-1};  
-    arr(idx)=type;
-    bs(k,3)={arr};
-    
-    global test_show_im
-    global test_edge_img
-    if test_show_im==2
-        figure()
-        imshow(img,[]);
-%         show_edge(img,'r',true);
-        show_edge(test_edge_img,'r',true);
     end
 end
 
@@ -590,8 +588,6 @@ function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_b
     
     img_process=img_process_base;
     %%%%%%%%%%%%%% above seemed error
-    % now see that k=1
-%     k=1;
     idx=bs{k,4};     % next 
     if( idx==0 )
         return
@@ -603,38 +599,92 @@ function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_b
         
 %     flag=false;
     choose_type=0;  % -1
+    choose_w=1000;
     
     for type = [0, 1,-1]
+        w=0;
         if(type==0)
             EPE=EPE_min;
         else
-            [img_process,bs]=cal_opc(img_process_base,bs,type,k);
-
-            img_process_o=restore_center_img(img_source,img_process);       
-            img_filtered_o=filtering(img_process_o);        
-            img_filtered=cut_center_img(img_filtered_o);
             img_source_i=cut_center_img(img_source);
+            % calculate which width will minimum EPE, from 2 - opc_width
+            EPE_min_w=EPE_min;  % opc_width:-1:2    2:opc_width
+            %%%% 这里 w顺序不一样结果不一样是因为相同时取得是先得到最小值的
+            for w = 2:opc_width
+                [img_process,opc_flag]=cal_opc_w(img_process_base,img_source_i,bs,type,k,w);
+%                 imshow(img_process,[]);
+%                 qqq=input("input ");
 
-            EPE=cal_EPE(img_source_i,img_filtered);
-            % already index-1
-            idx=bs{k,4};
-            bs(k,4)={idx+1};  
+                img_process_o=restore_center_img(img_source,img_process);       
+                img_filtered_o=filtering(img_process_o);        
+                img_filtered=cut_center_img(img_filtered_o);
+                
+%                 if idx==2
+%                     input('k');
+%                     imshow(img_filtered,[]);
+%                 end
+
+                EPE_w=cal_EPE(img_source_i,img_filtered);
+%                 idx           
+%                 if idx==2;disp(w);disp(EPE_w);end
+                X = ['w=',num2str(type*w),',EPE_w=',num2str(EPE_w),',EPE_min_w=',num2str(EPE_min_w),',EPE_cmp',num2str(EPE_cmp)];
+                disp(X)
+                if( EPE_w<EPE_cmp  ) 
+                    disp('EPE_w<EPE_cmp')
+                    choose_w=w;EPE_min_w=EPE_w;flag=true;
+                    break;
+                elseif(EPE_w < EPE_min_w)
+%                     disp('EPE_w < EPE_min_w')
+                    choose_w=w;EPE_min_w=EPE_w;choose_type=type;
+%                     if idx==52;disp(type);end
+                end  
+            end
+            EPE=EPE_min_w;
+            if flag; break;end
         end
         
+%         type
+%         EPE
         if( EPE<EPE_cmp  ) 
-            EPE_min=EPE;
-            flag=true;
+            EPE_min=EPE;flag=true;
+%             EPE_min
             break;
         elseif(EPE < EPE_min)
-            EPE_min=EPE;choose_type=type;
+%             X = ['EPE=',num2str(EPE),'<EPE_min=',num2str(EPE_min)];
+%             disp(X)
+            EPE_min=EPE;
+%             EPE_min
+%             disp("EPE < EPE_min");disp(type*w);disp(EPE_min);
         end  
     end    
+
     
-    if flag;return;end
     
-%     flag=false;
-    [img_process,bs]=cal_opc(img_process_base,bs,choose_type,k);
-    [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process,EPE_min,k);
+    if flag
+        bs(k,4)={idx-1};  
+        arr=bs{k,3};
+        if opc_flag==true
+            arr(idx)=choose_type*choose_w;
+        else
+            arr(idx)=0;
+        end
+        bs(k,3)={arr};
+    else
+        % flag==false
+        [img_process,opc_flag]=cal_opc_w(img_process_base,img_source_i,bs,choose_type,k,choose_w);
+        bs(k,4)={idx-1};  
+        arr=bs{k,3};
+        if opc_flag==true
+            arr(idx)=choose_type*choose_w;
+        else
+            arr(idx)=0;
+        end
+        bs(k,3)={arr};    
+%         arr
+        [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process,EPE_min,k);        
+    end
+    
+
 
 end
 
@@ -653,7 +703,6 @@ function OPC(img_source)
     [B,L] = bwboundaries(BW);  
     bs=cell(length(B),4);   % no.|| x  y  stack_to_record_sample index || k*4
     %cell2mat(p(1,1)) to get data /// or bs{k,3}
-    % now see that k=1 ---- only has 1 boundary
     for k = 1:length(B)
         boundary = B{k};     % 顺时针顺序
         % here x,y means row,col
@@ -670,7 +719,7 @@ function OPC(img_source)
         bs(k,2)={ys};
 %         bs(k,1)={boundary(1:skip:length(boundary),:)} %%%%(y,x)
         bs(k,3)={zeros(1,length(xs))};
-        bs(k,4)={length(xs)};
+        bs(k,4)={length(xs)};   % 因为从最后开始，所以是逆时针顺序
        
     end
 
