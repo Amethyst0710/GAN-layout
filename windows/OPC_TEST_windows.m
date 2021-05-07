@@ -594,6 +594,7 @@ end
 
 function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_base,EPE_min,k)
     flag=false;   %
+    opc_flag = true
     global minEPE_rate
     
     img_process=img_process_base;
