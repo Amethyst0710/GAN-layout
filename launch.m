@@ -1,6 +1,6 @@
 % input: 
-ascii_dir='ascii/t'
-fname='ringo'
+ascii_dir='ascii/t';
+fname='ringo';
 
 picdir='./original_plot/';
 resizedir='./original_data/';

@@ -588,7 +588,7 @@ end
 
 function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_base,EPE_min,k)
     flag=false;   %
-    opc_flag = true
+    opc_flag = true;
     global minEPE_rate
     
     img_process=img_process_base;
@@ -635,7 +635,7 @@ function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_b
 %                 X = ['w=',num2str(type*w),',EPE_w=',num2str(EPE_w),',EPE_min_w=',num2str(EPE_min_w),',EPE_cmp',num2str(EPE_cmp)];
 %                 disp(X)
                 if( EPE_w<EPE_cmp  ) 
-                    disp('EPE_w<EPE_cmp')
+%                     disp('EPE_w<EPE_cmp')
                     choose_w=w;EPE_min_w=EPE_w;flag=true;
                     break;
                 elseif(EPE_w < EPE_min_w)
