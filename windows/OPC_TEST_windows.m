@@ -16,7 +16,7 @@ global xpcnt;global ypcnt;
 % xpcnt=0.33;ypcnt=0.33;
 xpcnt=0.5;ypcnt=0.5;
 global skip;global opc_width;
-skip=10;     %采样点间隔
+skip=5;     %采样点间隔
 opc_width=10;
 global minEPE_rate;
 minEPE_rate=0.1;%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -527,13 +527,51 @@ function EPE=cal_EPE(img_source,img_process)
     %cell2mat(p(1,1)) to get data /// or bs{k,3}
     % now see that k=1 ---- only has 1 boundary
     for k = 1:length(B)
-       boundary = B{k};     %包含最外的矩形框
-       % here x,y means row,col
-       xs=boundary(1:skip:length(boundary),1);
-       ys=boundary(1:skip:length(boundary),2);
-       bs(k,1)={xs};
-       bs(k,2)={ys};
+        boundary = B{k};     %包含最外的矩形框
+        % here x,y means row,col
+        xs=boundary(1:skip:length(boundary),1);
+        ys=boundary(1:skip:length(boundary),2);
+        bs(k,1)={xs};
+        bs(k,2)={ys};
     end
+    %%%%%%%%%%%%%%%%%%% here for center in line test
+    bsc=cell(length(B),2);   % no.|| x  y || k*2
+    for k = 1:length(B)
+        xs=bs{k,1};
+        ys=bs{k,2};
+        xx=zeros(1,length(xs));
+        yy=zeros(1,length(xs));
+        for idx = 1:length(xs)
+            x1=xs(idx);
+            y1=ys(idx);
+            if idx==1
+                idx2=length(xs);   
+            else
+                idx2=idx-1;
+            end
+            x2=bs{k,1}(idx2);
+            y2=bs{k,2}(idx2);
+            if x1==x2
+                x=x1;y=(y1+y2)/2;
+            elseif y1==y2
+                x=(x1+x2)/2;y=y1;
+            else
+                %%%%%%%%这种情况怎么办???????
+                x=x1;y=y1;
+%                 if (abs(x1-x2)>abs(y1-y2))
+%                     
+%                 else
+%                     
+%                 end         
+            end
+            xx(idx)=x;
+            yy(idx)=y;
+        end
+        bsc{k,1}=xx;
+        bsc{k,2}=yy;
+    end
+    bs=bsc;
+    %%%%%%%%%%%%%%%%%%%%%%
     for k = 1:length(Bp)
        boundary = Bp{k};     %包含最外的矩形框
        % here x,y means row,col
