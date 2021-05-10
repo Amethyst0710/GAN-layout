@@ -8,6 +8,8 @@ clc;
 clear all;
 close all;
 %% config
+global limit;
+limit=10;
 global test_show_im
 test_show_im=10;     
 % 0 not showed, 1 show all filtered, 
@@ -99,7 +101,7 @@ end
 % close all;
 global test_edge_img
 test_edge_img=img_target_cut;
-OPC(img_target);
+img_process=OPC(img_target);
 % %%
 % close all
 % %%
@@ -632,7 +634,7 @@ end
 
 function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_base,EPE_min,k)
     flag=false;   %
-    opc_flag = true
+    opc_flag = true;
     global minEPE_rate
     
     img_process=img_process_base;
@@ -737,7 +739,196 @@ function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_b
 
 end
 
-function OPC(img_source)
+function [seg_pnt,check_pnt]=process_coordinate(B)
+    seg_pnt=cell(length(B),2); 
+    check_pnt=cell(length(B),2); 
+    % B - every point
+    % limit for seg_rule
+    for k = 1:length(B)
+        boundary = B{k};     % 顺时针顺序
+        % here x,y means row,col
+        xs=boundary(:,1);
+        ys=boundary(:,2);
+        corner_k_x=zeros(length(xs),1);
+        corner_k_y=zeros(length(xs),1);
+        corner_k_x(1)=xs(1);
+        corner_k_y(1)=ys(1);
+%         check_pnt_k=[];
+        cnt_k=1;
+        is_row=true;
+        
+        % find the cornor
+        for i = 2:length(xs)
+            j=i-1;
+            if xs(i)==xs(j)
+                if ~is_row
+                    % a cornor  |_ j i 
+                    cnt_k=cnt_k+1;
+                    corner_k_x(cnt_k)=xs(j);
+                    corner_k_y(cnt_k)=ys(j);
+                    is_row=true;
+                end
+            elseif ys(i)==ys(j)
+                if is_row
+                    % a cornor  _| j i 
+                    cnt_k=cnt_k+1;
+                    corner_k_x(cnt_k)=xs(j);
+                    corner_k_y(cnt_k)=ys(j);
+                    is_row=false;
+                end
+            else    % not consider it
+                % / \ boundaries caused error
+                if (abs(xs(i)-xs(j))==1 && abs(ys(i)-ys(j))==1)
+                    if is_row
+                        cnt_k=cnt_k+1;
+                        corner_k_x(cnt_k)=xs(j);
+                        corner_k_y(cnt_k)=ys(i);
+                        is_row=false;
+                        i=i+1;
+                    else
+                        cnt_k=cnt_k+1;
+                        corner_k_x(cnt_k)=xs(i);
+                        corner_k_y(cnt_k)=ys(j);
+                        is_row=true;
+                        i=i+1;
+                    end
+                end
+                
+                
+            end            
+        end
+        corner_k_x=corner_k_x(1:cnt_k)
+        corner_k_y=corner_k_y(1:cnt_k)
+        
+        % process coordinate
+        [seg_pnt_k,check_pnt_k]=process_coordinate_k(corner_k_x,corner_k_y)
+        seg_pnt(k,1)={seg_pnt_k(:,1)};
+        seg_pnt(k,2)={seg_pnt_k(:,2)};
+        check_pnt(k,1)={check_pnt_k(:,1)};
+        check_pnt(k,2)={check_pnt_k(:,2)};         
+       
+    end
+end
+
+function [seg,chk]=process_coordinate_k(xs,ys)
+    cnt=length(xs);
+    seg=zeros(cnt,2);
+    chk=zeros(cnt,2);
+    global limit;
+    
+    % if <3*limit ,直接记录顶点
+    % if >3*limit, seg seg，记录顶点-limit
+    
+    seg(1,:)=[xs(1),ys(1)];
+    cnt_seg=1;
+    last_vtx=true;  % last vtx recorded
+    hammer_chk=false; %
+    cnt_chk=0;
+    for i = 2:cnt+1
+        j=i-1;
+        %%%%%
+%         if ys(j)==41 && xs(j)==56
+%             disp("weew");
+%         end
+        %%%%
+        if i==cnt+1;i=1;end
+        if xs(i)==xs(j)
+            x=xs;y=ys;
+            
+            % j i
+            if abs(y(i)-y(j))>3*limit
+                % seg
+                cnt_seg=cnt_seg+1;
+                if y(j)>y(i);pn=-1;else;pn=1;end
+                seg(cnt_seg,:)=[x(i),y(j)+pn*limit];% 靠近j的坐标
+                cnt_seg=cnt_seg+1;
+                seg(cnt_seg,:)=[x(i),y(i)-pn*limit];% 靠近i的坐标
+                last_vtx=false;
+
+                % chk
+                cnt_chk=cnt_chk+1;
+                chk(cnt_chk,:)=[x(i), (y(i)+y(j))/2]; 
+                if ~hammer_chk
+                    % record 2 hammer_chk
+                    cnt_chk=cnt_chk+1;
+                    chk(cnt_chk,:)=[x(i), y(j)+pn*limit/2];% 靠近j的坐标
+                    hammer_chk=true;
+                end
+                cnt_chk=cnt_chk+1;
+                chk(cnt_chk,:)=[x(i), y(i)-pn*limit/2];% 靠近i的坐标  
+                 
+            else
+                % seg
+                if ~last_vtx
+                     % remove last
+                     seg(cnt_seg,:)=[x(j),y(j)];
+                     last_vtx=true;
+                else
+                    % chk
+                    cnt_chk=cnt_chk+1;
+                 end
+                 cnt_seg=cnt_seg+1;
+                 seg(cnt_seg,:)=[x(i),y(i)];
+
+                 % chk
+                 chk(cnt_chk,:)=[x(i), (y(i)+y(j))/2];  
+                 hammer_chk=false;
+            end
+            
+        elseif ys(i)==ys(j)
+            % same as xs(i)==xs(j)
+            y=xs;x=ys;  % here diff
+            
+            % j i
+            if abs(y(i)-y(j))>3*limit   %%%%%%%%%%%%%%%%%%%%%%TODO
+                % seg
+                cnt_seg=cnt_seg+1;
+                if y(j)>y(i);pn=-1;else;pn=1;end
+                seg(cnt_seg,:)=[y(j)+pn*limit,x(i)];% 靠近j的坐标
+                cnt_seg=cnt_seg+1;
+                seg(cnt_seg,:)=[y(i)-pn*limit,x(i)];% 靠近i的坐标
+                last_vtx=false;
+
+                % chk
+                cnt_chk=cnt_chk+1;
+                chk(cnt_chk,:)=[(y(i)+y(j))/2,x(i) ]; 
+                if ~hammer_chk
+                    % record 2 hammer_chk
+                    cnt_chk=cnt_chk+1;
+                    chk(cnt_chk,:)=[ y(j)+pn*limit/2,x(i)];% 靠近j的坐标
+                    hammer_chk=true;
+                end
+                cnt_chk=cnt_chk+1;
+                chk(cnt_chk,:)=[y(i)-pn*limit/2,x(i) ];% 靠近i的坐标  
+                 
+            else
+                % seg
+                if ~last_vtx
+                     % remove last
+                     seg(cnt_seg,:)=[y(j),x(j)];
+                     last_vtx=true;
+                else
+                    % chk
+                    cnt_chk=cnt_chk+1;
+                 end
+                 cnt_seg=cnt_seg+1;
+                 seg(cnt_seg,:)=[y(i),x(i)];
+
+                 % chk
+                 chk(cnt_chk,:)=[(y(i)+y(j))/2,x(i)];  
+                 hammer_chk=false;
+            end
+            
+        else
+         % pass
+        end
+    end
+    
+    seg=seg(1:cnt_seg,:);
+    chk=chk(1:cnt_chk,:);
+end
+
+function img_process=OPC(img_source)
     img_process_o=img_source;
     img_source_i=cut_center_img(img_source);
 %     img_process=img_source_i;   % --> img_opc not filtered
@@ -750,6 +941,15 @@ function OPC(img_source)
     global skip;
     BW = imbinarize(img_source_i);
     [B,L] = bwboundaries(BW);  
+    %%%%%%%%%%%%%%%%%%%%%5
+    [seg_pnt,check_pnt]=process_coordinate(B);
+    figure();
+    imshow(img_source_i);hold on;
+    scatter(seg_pnt{2,2}, seg_pnt{2,1},'x');
+    scatter(check_pnt{2,2}, check_pnt{2,1},'p');
+%     scatter(seg_pnt(:,2), seg_pnt(:,1),'x');
+%     scatter(check_pnt(:,2), check_pnt(:,1),'p');
+    %%%%%%%%%%%%%%%%%%%%%55
     bs=cell(length(B),4);   % no.|| x  y  stack_to_record_sample index || k*4
     %cell2mat(p(1,1)) to get data /// or bs{k,3}
     for k = 1:length(B)
