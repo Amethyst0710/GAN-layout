@@ -1,4 +1,3 @@
-close all
 %% config
 global resize_M;
 resize_M=100;
@@ -6,9 +5,9 @@ global limit;
 limit=floor(0.05*resize_M);
 global opc_width;
 opc_width=limit+2;
-global test_show_im
 
-test_show_im=10;     
+% global test_show_im;
+% test_show_im=10;     
 % 0 not showed, 1 show all filtered, 
 % 2 show all opc process; 10 only show final result & original pic  
 global xpcnt;global ypcnt;
@@ -17,6 +16,9 @@ xpcnt=0.5;ypcnt=0.5;
 
 global minEPE_rate;
 minEPE_rate=0.1;%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+global save_r_path_input;
+save_r_path_input=save_r_path;
 
 %%  read data from json
 % clc;
@@ -72,14 +74,17 @@ M=resize_M;     % resize边长为M
 im = imresize(BW,[M M]); % Resize the picture for alexnet
 % imshow(im)
 
-% save_r_path=strcat(resizedir,fname(1:end-5),'.png');
-imwrite(im,save_r_path,'png')
+% % 应该存source_i(cut后的)
+% % save_r_path=strcat(resizedir,fname(1:end-5),'.png');
+% imwrite(im,save_r_path,'png')
 % imwrite(im,'save_res.png','png')
 % close(fig);
 
+img=im;
+
 
 %% read from pic
-img=imread(save_r_path);
+% img=imread(save_r_path);
 img_target=1-img;       % 黑白问题
 
 %% 低通滤波
@@ -180,7 +185,7 @@ end         % end of function :  read_data_from
 
 %轮廓提取
 function p=show_edge(img,color,is_scatter)
-    p=[];
+    p=plot([]);
     BW = imbinarize(img);
     % imshow(BW);
     [B,L] = bwboundaries(BW);
@@ -538,6 +543,7 @@ end
 
 function [kp,idx,vmin]=find_nearest_value(same,data,cell_list,find_type)
     vmin=1000;idx=-1;kp=-1;%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % if seg point x same then find_type='x', find the y same point
     % idx not impossible except refer -1 wrong
     if find_type=='x'
         x=1;y=2;
@@ -554,6 +560,8 @@ function [kp,idx,vmin]=find_nearest_value(same,data,cell_list,find_type)
         if isempty(xx);continue;end
         [v,i] = min(abs(xx-data));
         
+%         if img_source()
+        
 %         if find_type=='x'
 %             xx=xlist(ylist==same);% all the possible data
 %             [v,i] = min(abs(xx-data))
@@ -565,6 +573,7 @@ function [kp,idx,vmin]=find_nearest_value(same,data,cell_list,find_type)
     end
 end
 
+%%%%% serious problem TODO!!!!
 function EPE=cal_EPE(img_source,img_process)
 % all EPE
 % 1. get checkpoint in source & process boundaries
@@ -577,11 +586,11 @@ function EPE=cal_EPE(img_source,img_process)
     BWp = imbinarize(img_process);
     [Bp,Lp] = bwboundaries(BWp);
     
-    [~,check_pnt]=process_coordinate(B);
+    [~,chk_pnt]=process_coordinate(B);
 %     bs=cell(length(B),2);   % no.|| x  y || k*2
     bsp=cell(length(Bp),2);   % no.|| x  y || k*2
 %     bs(:,1:2)=check_pnt;  % x y
-    bs=check_pnt;
+%     bs=check_pnt;
 %     %cell2mat(p(1,1)) to get data /// or bs{k,3}
 %     % now see that k=1 ---- only has 1 boundary
 %     for k = 1:length(B)
@@ -641,32 +650,48 @@ function EPE=cal_EPE(img_source,img_process)
     
     EPE=0;
     not_find_EPE=100; %%%%%%%%%%%%%%%%%%%
-    [a,b]=size(bs);
+    [a,b]=size(chk_pnt);
     global opc_width
     for k = 1:a
-        % bs(k,1)={xs};bs(k,2)={ys};
-        xs=bs{k,1};
-        ys=bs{k,2};
-        for i = 1:length(bs{k,1})
-            if i==length(bs{k,1});j=1;else;j=i+1;end
-            % x-same ----,find nearest y; y...
-            % xy-diff, 
-            if xs(i)==xs(j)
-%                 [kp,idx,vmin]=find_nearest_value(xs(i),ys(i),bsp,'y');
+        % chk_pnt(k,1)={xs};chk_pnt(k,2)={ys};chk_pnt={find_type}
+        xs=chk_pnt{k,1};
+        ys=chk_pnt{k,2};
+        find_type=chk_pnt{k,3};
+        for i = 1:length(chk_pnt{k,1})
+%             if i==length(chk_pnt{k,1});j=1;else;j=i+1;end
+            if find_type(i)=='x' || find_type(i)==120
                 [kp,idx,vmin]=find_nearest_value(ys(i),xs(i),bsp,'x');
-            elseif ys(i)==ys(j)
-%                 [kp,idx,vmin]=find_nearest_value(ys(i),xs(i),bsp,'x');
+%                 if kp~=-1
+%                     ccc=bsp{kp,1};
+%                     xs(i)
+%                     ccc(idx)
+%                 end
+            elseif find_type(i)=='y' || find_type(i)==121
                 [kp,idx,vmin]=find_nearest_value(xs(i),ys(i),bsp,'y');
-            else
-                % 4 situation, 2 class
-                if(xs(i)>xs(j) && ys(i)>ys(j)) || (xs(i)<xs(j) && ys(i)<ys(j))
-                    % L or -|
-                    [kp,idx,vmin]=find_nearest_value(ys(i),xs(i),bsp,'x');
-                else
-                    % |- or _|
-                    [kp,idx,vmin]=find_nearest_value(xs(i),ys(i),bsp,'y');
-                end
+%                 if kp~=-1
+%                     ccc=bsp{kp,2};
+%                     ccc(idx)
+%                     ys(i)
+%                 end
             end
+%             % x-same ----,find nearest y; y...
+%             % xy-diff, 
+%             if xs(i)==xs(j)
+% %                 [kp,idx,vmin]=find_nearest_value(xs(i),ys(i),bsp,'y');
+%                 [kp,idx,vmin]=find_nearest_value(ys(i),xs(i),bsp,'x');
+%             elseif ys(i)==ys(j)
+% %                 [kp,idx,vmin]=find_nearest_value(ys(i),xs(i),bsp,'x');
+%                 [kp,idx,vmin]=find_nearest_value(xs(i),ys(i),bsp,'y');
+%             else
+%                 % 4 situation, 2 class
+%                 if(xs(i)>xs(j) && ys(i)>ys(j)) || (xs(i)<xs(j) && ys(i)<ys(j))
+%                     % L or -|
+%                     [kp,idx,vmin]=find_nearest_value(ys(i),xs(i),bsp,'x');
+%                 else
+%                     % |- or _|
+%                     [kp,idx,vmin]=find_nearest_value(xs(i),ys(i),bsp,'y');
+%                 end
+%             end
             
             
             if idx==-1 || vmin>=opc_width*1.3   % not find
@@ -694,6 +719,7 @@ function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_b
     global minEPE_rate
     
     img_process=img_process_base;
+    if isempty(bs); return ;end
     %%%%%%%%%%%%%% above seemed error
     idx=bs{k,4};     % next 
     if( idx==0 )
@@ -716,8 +742,8 @@ function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_b
             img_source_i=cut_center_img(img_source);
             % calculate which width will minimum EPE, from 2 - opc_width
             EPE_min_w=EPE_min;  % opc_width:-1:2    2:opc_width
-            %%%% 这里 w顺序不一样结果不一样是因为相同时取得是先得到最小值的
-            for w = opc_width:-1:2
+            %%%% 这里 w顺序不一样结果不一样是因为相同时取得是先得到最小值的 v
+            for w = 2:opc_width
                 [img_process,opc_flag]=cal_opc_w(img_process_base,img_source_i,bs,type,k,w);
 %                 imshow(img_process,[]);
 %                 qqq=input("input ");
@@ -797,7 +823,7 @@ end
 
 function [seg_pnt,chk_pnt]=process_coordinate(B)
     seg_pnt=cell(length(B),2); 
-    chk_pnt=cell(length(B),2); 
+    chk_pnt=cell(length(B),3); 
     % B - every point
     % limit for seg_rule
     for k = 1:length(B)
@@ -861,15 +887,17 @@ function [seg_pnt,chk_pnt]=process_coordinate(B)
         seg_pnt(k,1)={seg_pnt_k(:,1)};
         seg_pnt(k,2)={seg_pnt_k(:,2)};
         chk_pnt(k,1)={chk_pnt_k(:,1)};
-        chk_pnt(k,2)={chk_pnt_k(:,2)};         
+        chk_pnt(k,2)={chk_pnt_k(:,2)};
+        chk_pnt(k,3)={chk_pnt_k(:,3)};
        
     end
 end
 
 function [seg,chk]=process_coordinate_k(xs,ys)
     cnt=length(xs);
-    seg=zeros(cnt,2);
-    chk=zeros(cnt,2);
+    seg=zeros(cnt,2);   % x y
+    chk=zeros(cnt,3);   % x y find_type  
+    % if seg point x same then find_type='x', find the y same point
     global limit;
     
     % if <3*limit ,直接记录顶点
@@ -905,16 +933,16 @@ function [seg,chk]=process_coordinate_k(xs,ys)
 
                 % chk
                 cnt_chk=cnt_chk+1;
-                chk(cnt_chk,:)=[x(i), floor((y(i)+y(j))/2)]; 
+                chk(cnt_chk,:)=[x(i), floor((y(i)+y(j))/2),'x']; 
                 if ~hammer_chk
                     % record 2 hammer_chk
                     cnt_chk=cnt_chk+1;
-                    chk(cnt_chk,:)=[x(i), floor(y(j)+pn*limit/2)];% 靠近j的坐标
+                    chk(cnt_chk,:)=[x(i), floor(y(j)+pn*limit/2),'x'];% 靠近j的坐标
                     hammer_chk=true;
                 end
                 if~(first_seg && j==cnt)
                     cnt_chk=cnt_chk+1;
-                    chk(cnt_chk,:)=[x(i), floor(y(i)-pn*limit/2)];% 靠近i的坐标  
+                    chk(cnt_chk,:)=[x(i), floor(y(i)-pn*limit/2),'x'];% 靠近i的坐标  
                 else
                     % remove first vertex
                     seg(1,:)=[];
@@ -938,7 +966,7 @@ function [seg,chk]=process_coordinate_k(xs,ys)
                  end
 
                  % chk
-                 chk(cnt_chk,:)=[x(i), floor((y(i)+y(j))/2)];  
+                 chk(cnt_chk,:)=[x(i), floor((y(i)+y(j))/2),'x'];  
                  hammer_chk=false;
             end
             
@@ -959,16 +987,16 @@ function [seg,chk]=process_coordinate_k(xs,ys)
 
                 % chk
                 cnt_chk=cnt_chk+1;
-                chk(cnt_chk,:)=[floor((y(i)+y(j))/2),x(i) ]; 
+                chk(cnt_chk,:)=[floor((y(i)+y(j))/2),x(i),'y']; 
                 if ~hammer_chk
                     % record 2 hammer_chk
                     cnt_chk=cnt_chk+1;
-                    chk(cnt_chk,:)=[ floor(y(j)+pn*limit/2),x(i)];% 靠近j的坐标
+                    chk(cnt_chk,:)=[ floor(y(j)+pn*limit/2),x(i),'y'];% 靠近j的坐标
                     hammer_chk=true;
                 end
                 if~(first_seg && j==cnt)
                     cnt_chk=cnt_chk+1;
-                    chk(cnt_chk,:)=[floor(y(i)-pn*limit/2),x(i) ];% 靠近i的坐标  
+                    chk(cnt_chk,:)=[floor(y(i)-pn*limit/2),x(i),'y'];% 靠近i的坐标  
                 else
                     % remove first vertex
                     seg(1,:)=[];
@@ -992,7 +1020,7 @@ function [seg,chk]=process_coordinate_k(xs,ys)
                  end
 
                  % chk
-                 chk(cnt_chk,:)=[floor((y(i)+y(j))/2),x(i)];  
+                 chk(cnt_chk,:)=[floor((y(i)+y(j))/2),x(i),'y'];  
                  hammer_chk=false;
             end
             
@@ -1008,6 +1036,12 @@ end
 function img_process=OPC(img_source)
     img_process_o=img_source;
     img_source_i=cut_center_img(img_source);
+    
+    % 应该存source_i(cut后的)
+    % save_r_path=strcat(resizedir,fname(1:end-5),'.png');
+    global save_r_path_input;
+    imwrite(img_source_i,save_r_path_input,'png')
+    
 %     img_process=img_source_i;   % --> img_opc not filtered
     % _o后缀是原大小图片、未切割
     % img_source_i 原图片切割后结果

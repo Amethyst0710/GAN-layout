@@ -30,8 +30,11 @@ for i = 3 : length( subdir )
 
     % imshow figure
     test_show_im=0;
+    % 0 not showed, 1 show all filtered, 
+    % 2 show all opc process; 10 only show final result & original pic  
     % disp(test_show_im) ;
 
+    i
     run OPC_TEST.m
 
 end
