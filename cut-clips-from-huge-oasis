@@ -1,7 +1,8 @@
 #! /bin/bash
 usage(){
   echo "Usage: ./cut-clips-from-huge-oasis inputLayoutFileName layersFileName coorFileName radius"
-  echo "example: ./cut-clips-from-huge-oasis gds/ringo.gds layer coor 0.2"
+  echo "example: ./cut-clips-from-huge-oasis gds/demo3_162nm.gds layer coor 2"
+  echo "example: ./cut-clips-from-huge-oasis gds/ringo.gds all-layer coor 0.8"
 }
 if [ $# -ne 4 ] ;then
   echo "ERROR : Incorrect number of arguments for ${0##*/}"  # 删除${0}字符串中最后一个‘/’及其之前的字符
@@ -9,17 +10,22 @@ if [ $# -ne 4 ] ;then
   exit 1
 fi
 inputLayoutFile=$1    # with path
-layersFile=$2         # not important
+layersFile=$2
 coorFile=$3
 radius=$4
 
 filename=$(basename "$inputLayoutFile")
 fname="${filename%.*}"
 
+##### remove created file before
+rm -r clips ascii process_data original_data original_plot
 
+##### here to get all layer info in the file, if don't need, don't use param 'all-layer'
 #step-0: get layer info
-echo "step-0: get layer info"
-klayout -e -z -r get-layer-info.py -rd input_file="$inputLayoutFile" > "$layersFile"
+if [[ $layersFile == "all-layer" ]]; then
+  echo "step-0: get layer info"
+  klayout -e -z -r get-layer-info.py -rd input_file="$inputLayoutFile" > "$layersFile"
+fi
 
 
 #step-1: extract single layer big oasis

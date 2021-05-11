@@ -3,6 +3,8 @@
 test*
 layer*-*
 *.asv
+coor
+layer
 
 !README.assets
 !testdata

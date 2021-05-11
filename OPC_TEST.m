@@ -1,16 +1,20 @@
+close all
 %% config
+global resize_M;
+resize_M=100;
 global limit;
-limit=5;
+limit=floor(0.05*resize_M);
+global opc_width;
+opc_width=limit+2;
 global test_show_im
+
 test_show_im=10;     
 % 0 not showed, 1 show all filtered, 
 % 2 show all opc process; 10 only show final result & original pic  
 global xpcnt;global ypcnt;
 % xpcnt=0.33;ypcnt=0.33;
 xpcnt=0.5;ypcnt=0.5;
-global skip;global opc_width;
-skip=10;     %采样点间隔
-opc_width=10;
+
 global minEPE_rate;
 minEPE_rate=0.1;%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -61,7 +65,8 @@ img=imread(save_o_path);
 % BW = im2bw(img,0.5);
 BW = imbinarize(rgb2gray(img),0.5);
 
-M=100;     % resize边长为M
+global resize_M;
+M=resize_M;     % resize边长为M
 % fig=figure,
 % imshow(BW)
 im = imresize(BW,[M M]); % Resize the picture for alexnet
@@ -175,6 +180,7 @@ end         % end of function :  read_data_from
 
 %轮廓提取
 function p=show_edge(img,color,is_scatter)
+    p=[];
     BW = imbinarize(img);
     % imshow(BW);
     [B,L] = bwboundaries(BW);
@@ -711,7 +717,7 @@ function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_b
             % calculate which width will minimum EPE, from 2 - opc_width
             EPE_min_w=EPE_min;  % opc_width:-1:2    2:opc_width
             %%%% 这里 w顺序不一样结果不一样是因为相同时取得是先得到最小值的
-            for w = 2:opc_width
+            for w = opc_width:-1:2
                 [img_process,opc_flag]=cal_opc_w(img_process_base,img_source_i,bs,type,k,w);
 %                 imshow(img_process,[]);
 %                 qqq=input("input ");
