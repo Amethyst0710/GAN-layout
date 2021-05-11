@@ -433,16 +433,16 @@ function [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,width)
             % up is on
             direc=0;
         end
-        if(y1<y2);fit=1;else;fit=-1;end  % 调整重叠问题
+        if(y1<y2);fit=-1;else;fit=1;end  % 调整重叠问题
         switch (type+direc*10)
              case 1  % type=1, direc=0 draw down on
-                img=draw_rec(img,x1+width,y1+fit,x2,y2,on);
+                img=draw_rec(img,x1+width,y1+fit,x2,y2-fit,on);
             case -1 % type=-1, direc=0 draw up off
-                img=draw_rec(img,x1-width,y1+fit,x2,y2,off);
+                img=draw_rec(img,x1-width,y1+fit,x2,y2-fit,off);
             case 11 % type=1, direc=1 draw up on
-                img=draw_rec(img,x1-width,y1+fit,x2,y2,on);
+                img=draw_rec(img,x1-width,y1+fit,x2,y2-fit,on);
             case 9  % type=-1, direc=1 draw down off
-                img=draw_rec(img,x1+width,y1+fit,x2,y2,off);
+                img=draw_rec(img,x1+width,y1+fit,x2,y2-fit,off);
         end
     elseif(y1==y2)
         % |
@@ -457,17 +457,17 @@ function [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,width)
             % left is on
             direc=0;
         end
-        if(x1<x2);fit=1;else;fit=-1;end  % 调整重叠问题
+        if(x1<x2);fit=-1;else;fit=1;end  % 调整重叠问题
 %         type+direc*10
         switch (type+direc*10)
             case 1  % type=1, direc=0 draw right on
-                img=draw_rec(img,x1+fit,y1+width,x2,y2,on);
+                img=draw_rec(img,x1+fit,y1+width,x2-fit,y2,on);
             case -1 % type=-1, direc=0 draw left off
-                img=draw_rec(img,x1+fit,y1-width,x2,y2,off);
+                img=draw_rec(img,x1+fit,y1-width,x2-fit,y2,off);
             case 11 % type=1, direc=1 draw left on
-                img=draw_rec(img,x1+fit,y1-width,x2,y2,on);
+                img=draw_rec(img,x1+fit,y1-width,x2-fit,y2,on);
             case 9  % type=-1, direc=1 draw right off
-                img=draw_rec(img,x1+fit,y1+width,x2,y2,off);
+                img=draw_rec(img,x1+fit,y1+width,x2-fit,y2,off);
         end
     elseif (type~=0)    % 理论0上不会传进来
         % \ / 
@@ -479,7 +479,7 @@ function [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,width)
 %         img=draw_rec(img,x1,y1,x2,y2,on);
         % 以顶点为中心画方块？%%%%%%%%%%%%%%%%%%%%
         % 存在问题，判断点刚好是顶点？
-        d=floor(width);
+        d=floor(width)+1;
 
         corner=[[1,b];[a,b];[a,1];[1,1]]; % 边缘不画
 
