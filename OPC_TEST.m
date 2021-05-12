@@ -1,6 +1,6 @@
 %% config
 global test_show_im;
-test_show_im=10;
+test_show_im=0;
 % 0 not showed, 1 show all filtered, 
 % 2 show all opc process; 10 only show final result & original pic  
 
@@ -66,7 +66,7 @@ set(gca,'position',[0 0 1 1]); % axesÔÚfigureÖÐµÄ×ó±ß½ç£¬ÏÂ±ß½ç£¬¿í¶È£¬¸ß¶È£¬×îÐ
 axis([xx-radius,xx+radius,yy-radius,yy+radius]);
 axis off;
 
-% save_o_path=strcat(picdir,fname(1:end-5),'.png');
+% save_o_path=strcat(picdir,fname(1:end-5),'.jpg');
 saveas(gcf, save_o_path);
 % saveas(gcf, 'save.jpg');
 close(fig);
@@ -85,9 +85,9 @@ im = imresize(BW,[M M]); % Resize the picture for alexnet
 % imshow(im)
 
 % % Ó¦¸Ã´æsource_i(cutºóµÄ)
-% % save_r_path=strcat(resizedir,fname(1:end-5),'.png');
-% imwrite(im,save_r_path,'png')
-% imwrite(im,'save_res.png','png')
+% % save_r_path=strcat(resizedir,fname(1:end-5),'.jpg');
+% imwrite(im,save_r_path,'jpg')
+% imwrite(im,'save_res.jpg','jpg')
 % close(fig);
 
 img=im;
@@ -120,8 +120,9 @@ img_process=OPC(img_target);
 
 %%
 % img_process only 0/1
-bw_p=1-logical(img_process);      % ºÚ°×ÏÔÉ«
-imwrite(bw_p,save_p_path,'png');
+bw_p=img_process;
+% bw_p=1-logical(img_process);      % ºÚ°×ÏÔÉ«
+imwrite(bw_p,save_p_path,'jpg');
 
 %% show result
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1064,9 +1065,9 @@ function img_process=OPC(img_source)
     img_source_i=cut_center_img(img_source);
     
     % Ó¦¸Ã´æsource_i(cutºóµÄ)
-    % save_r_path=strcat(resizedir,fname(1:end-5),'.png');
+    % save_r_path=strcat(resizedir,fname(1:end-5),'.jpg');
     global save_r_path_input;
-    imwrite(img_source_i,save_r_path_input,'png')
+    imwrite(img_source_i,save_r_path_input,'jpg')
     
 %     img_process=img_source_i;   % --> img_opc not filtered
     % _oºó×ºÊÇÔ­´óÐ¡Í¼Æ¬¡¢Î´ÇÐ¸î

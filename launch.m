@@ -1,6 +1,6 @@
 % input: 
-ascii_dir='ascii/demo3_162nm';
-fname='demo3_162nm';
+% ascii_dir='ascii/demo3_162nm';
+% fname='demo3_162nm';
 
 picdir='./original_plot/';
 resizedir='./original_data/';
@@ -24,9 +24,9 @@ for i = 3 : length( subdir )
   
     % eg. filename='clips_ringo_layer1-0_2700-6890-200.json';
     fpath=strcat(ascii_data_dir,filename);
-    save_o_path=strcat(picdir,fname,'/o_',filename(1:end-5),'.png');
-    save_r_path=strcat(resizedir,fname,'/r_',filename(1:end-5),'.png');
-    save_p_path=strcat(p_datadir,fname,'/p_',filename(1:end-5),'.png');
+    save_o_path=strcat(picdir,fname,'/o_',filename(1:end-5),'.jpg');
+    save_r_path=strcat(resizedir,fname,'/r_',filename(1:end-5),'.jpg');
+    save_p_path=strcat(p_datadir,fname,'/p_',filename(1:end-5),'.jpg');
 
     % imshow figure
     % disp(test_show_im) ;

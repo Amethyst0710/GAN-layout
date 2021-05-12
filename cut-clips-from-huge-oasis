@@ -17,84 +17,88 @@ radius=$4
 filename=$(basename "$inputLayoutFile")
 fname="${filename%.*}"
 
-##### remove created file before
-rm -r clips ascii process_data original_data original_plot
+###### remove created file before
+#rm -r clips ascii
+#rm -r process_data original_data original_plot
+#
+###### here to get all layer info in the file, if don't need, don't use param 'all-layer'
+##step-0: get layer info
+#if [[ $layersFile == "all-layer" ]]; then
+#  echo "step-0: get layer info"
+#  klayout -e -z -r get-layer-info.py -rd input_file="$inputLayoutFile" > "$layersFile"
+#fi
+#
+#
+##step-1: extract single layer big oasis
+#echo "step-1: extract single layer big oasis"
+#
+#while read -r line
+#do
+##  echo $line
+#  if [[ $line =~ "LAYER" ]]; then
+#    echo
+#  else
+##    l=`echo $line | cut -d' ' -f1`
+##    d=`echo $line | cut -d' ' -f2`
+#    ## following is recommended
+#    l=$(echo "$line" | cut -d'/' -f1)
+#    d=$(echo "$line" | cut -d'/' -f2)
+#
+#    echo "extracting layer $l-$d ..."
+#    klayout -e -z -r extract-single-layer.py -rd input_file="$inputLayoutFile" -rd layer="$l" -rd datatype="$d" -rd output_file="layer$l-$d.oas"
+#  fi
+#done < "$layersFile"
+#
+##step-2: cut clips from each single layer big oasis
+#echo "step-2: cut clips from each single layer big oasis"
+#clips_dir="clips"
+#output_clips_dir="$clips_dir/$fname"
+#
+#if [ ! -d "$clips_dir" ]; then
+#  mkdir "$clips_dir"
+#fi
+#if [ ! -d "$output_clips_dir" ]; then
+#  mkdir "$output_clips_dir"
+#fi
+#
+#for oas in layer*-*.oas
+#do
+#  [[ -e "$oas" ]] || break  # handle the case of no *.wav files
+#  echo "cutting $oas ..."
+#  klayout -e -z -r clip.py -rd input_file="$oas" -rd coor_file="$coorFile" -rd radius=$radius -rd output="$output_clips_dir/clips_$fname_$oas"
+#done
+#
+##if don't want to reserve last layer files
+#rm layer*-*.oas
+#
+#
+###############################################
+##step-3: transform gds to ascii
+#echo "step-3: transform gds to ascii"
+#
+#ascii_dir="ascii"
+#output_ascii_dir="$ascii_dir/$fname"
+#
+#if [ ! -d "$ascii_dir" ]; then
+#  mkdir "$ascii_dir"
+#fi
+#if [ ! -d "$output_ascii_dir" ]; then
+#  mkdir "$output_ascii_dir"
+#fi
+#
+#for gds in "$output_clips_dir"/*.gds
+#do
+#  [[ -e "$gds" ]] || break  # handle the case of no *.wav files
+#  echo "gds2ascii $gds ..."
+#  gdsfilename=$(basename "$gds")
+#  gdsfname="${gdsfilename%.*}"
+#  python3 gds2ascii.py "$gds" ./"$output_ascii_dir"/"$gdsfname".json
+#done
 
-##### here to get all layer info in the file, if don't need, don't use param 'all-layer'
-#step-0: get layer info
-if [[ $layersFile == "all-layer" ]]; then
-  echo "step-0: get layer info"
-  klayout -e -z -r get-layer-info.py -rd input_file="$inputLayoutFile" > "$layersFile"
-fi
-
-
-#step-1: extract single layer big oasis
-echo "step-1: extract single layer big oasis"
-
-while read -r line
-do
-#  echo $line
-  if [[ $line =~ "LAYER" ]]; then
-    echo
-  else
-#    l=`echo $line | cut -d' ' -f1`
-#    d=`echo $line | cut -d' ' -f2`
-    ## following is recommended
-    l=$(echo "$line" | cut -d'/' -f1)
-    d=$(echo "$line" | cut -d'/' -f2)
-
-    echo "extracting layer $l-$d ..."
-    klayout -e -z -r extract-single-layer.py -rd input_file="$inputLayoutFile" -rd layer="$l" -rd datatype="$d" -rd output_file="layer$l-$d.oas"
-  fi
-done < "$layersFile"
-
-#step-2: cut clips from each single layer big oasis
-echo "step-2: cut clips from each single layer big oasis"
-clips_dir="clips"
-output_clips_dir="$clips_dir/$fname"
-
-if [ ! -d "$clips_dir" ]; then
-  mkdir "$clips_dir"
-fi
-if [ ! -d "$output_clips_dir" ]; then
-  mkdir "$output_clips_dir"
-fi
-
-for oas in layer*-*.oas
-do
-  [[ -e "$oas" ]] || break  # handle the case of no *.wav files
-  echo "cutting $oas ..."
-  klayout -e -z -r clip.py -rd input_file="$oas" -rd coor_file="$coorFile" -rd radius=$radius -rd output="$output_clips_dir/clips_$fname_$oas"
-done
-
-#if don't want to reserve last layer files
-rm layer*-*.oas
-
-
-##############################################
-#step-3: transform gds to ascii
-echo "step-3: transform gds to ascii"
-
+#### here for only execute step 4
 ascii_dir="ascii"
 output_ascii_dir="$ascii_dir/$fname"
-
-if [ ! -d "$ascii_dir" ]; then
-  mkdir "$ascii_dir"
-fi
-if [ ! -d "$output_ascii_dir" ]; then
-  mkdir "$output_ascii_dir"
-fi
-
-for gds in "$output_clips_dir"/*.gds
-do
-  [[ -e "$gds" ]] || break  # handle the case of no *.wav files
-  echo "gds2ascii $gds ..."
-  gdsfilename=$(basename "$gds")
-  gdsfname="${gdsfilename%.*}"
-  python3 gds2ascii.py "$gds" ./"$output_ascii_dir"/"$gdsfname".json
-done
-
-
+####
 #step-4: matlab read from json, resize and process
 echo "step-4: matlab read from json, resize and process "
 
