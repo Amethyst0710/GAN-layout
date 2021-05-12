@@ -29,9 +29,6 @@ for i = 3 : length( subdir )
     save_p_path=strcat(p_datadir,fname,'/p_',filename(1:end-5),'.png');
 
     % imshow figure
-    test_show_im=0;
-    % 0 not showed, 1 show all filtered, 
-    % 2 show all opc process; 10 only show final result & original pic  
     % disp(test_show_im) ;
 
     i

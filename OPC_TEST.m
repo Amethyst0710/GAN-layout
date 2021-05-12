@@ -1,18 +1,28 @@
 %% config
+global test_show_im;
+test_show_im=10;
+% 0 not showed, 1 show all filtered, 
+% 2 show all opc process; 10 only show final result & original pic  
+
 global resize_M;
-resize_M=100;
+resize_M=300;
+global xpcnt;global ypcnt;
+% xpcnt=0.33;ypcnt=xpcnt;
+xpcnt=0.5;ypcnt=xpcnt;
+
 global limit;
-limit=floor(0.05*resize_M);
+limit=floor(0.05*resize_M*xpcnt);
 global opc_width;
-opc_width=limit+2;
+opc_width=limit*2;
+
+global filter_param; % image bigger, it bigger, filter more
+filter_param=20;
 
 % global test_show_im;
 % test_show_im=10;     
 % 0 not showed, 1 show all filtered, 
 % 2 show all opc process; 10 only show final result & original pic  
-global xpcnt;global ypcnt;
-% xpcnt=0.33;ypcnt=0.33;
-xpcnt=0.5;ypcnt=0.5;
+
 
 global minEPE_rate;
 minEPE_rate=0.1;%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -312,7 +322,8 @@ function img_process=filtering(img_target)
     [a,b] = size(img_target);
     a0 = round(a/2);
     b0 = round(b/2);
-    d = min(a0,b0)/12;      %12  此处决定距离中心多远的频率不要  
+    global filter_param; % the bigger, filter more
+    d = min(a0,b0)/filter_param;      %12  此处决定距离中心多远的频率要  
     % d = 5;
     d = d^2;
     low_filter=zeros(a,b);
@@ -427,7 +438,7 @@ function [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,width)
     if(x1==x2)
         % ——
         if(x1==a||x1==1);flag=false;return;end     % 边缘不画
-        if(abs(y1-y2)<=limit);flag=false;return;end    % <limit不画
+        if(abs(y1-y2)<limit);flag=false;return;end    % <limit不画
         xx=x1+width-1; %%%%%%%%%%%%%%%%%%%%
         xx=check_in_range(xx,1,a);
         if(img_source_i(xx,floor((y1+y2)/2))==on)
@@ -451,7 +462,7 @@ function [img,flag]=cal_opc_w_process(img,img_source_i,x1,x2,y1,y2,type,width)
     elseif(y1==y2)
         % |
         if(y1==b||y1==1);flag=false;return;end     % 边缘不画
-        if(abs(x1-x2)<=limit);flag=false;return;end    % <limit不画
+        if(abs(x1-x2)<limit);flag=false;return;end    % <limit不画
         yy=y1+width-1; %%%%%%%%%%%%%%%%%%%%
         yy=check_in_range(yy,1,b);
         if(img_source_i(floor((x1+x2)/2),yy)==on)
@@ -705,8 +716,8 @@ function EPE=cal_EPE(img_source,img_process)
 end
 
 function [img_process,bs,flag,EPE]=opc_process(bs,img_source,img_process_base,EPE_min,knum)
-    % 保证knum>=1时：
-    [img_process,bs,flag,EPE]=opc_process_k(bs,img_source,img_process_base,EPE_min,1);
+%      % 保证knum>=1时；knum是组数
+    [img_process,bs,flag,EPE]=opc_process_k(bs,img_source,img_process_base,EPE_min,1); 
     for k = 2:knum
         [img_process,bs,flag,EPE]=opc_process_k(bs,img_source,img_process,EPE,k); %EPE_min
         if flag; return; end
@@ -720,6 +731,7 @@ function [img_process,bs,flag,EPE_min]=opc_process_k(bs,img_source,img_process_b
     
     img_process=img_process_base;
     if isempty(bs); return ;end
+    if length(bs{k,1})<=2; return ;end  %1/2row
     %%%%%%%%%%%%%% above seemed error
     idx=bs{k,4};     % next 
     if( idx==0 )
@@ -948,6 +960,10 @@ function [seg,chk]=process_coordinate_k(xs,ys)
                     seg(1,:)=[];
                     cnt_seg=cnt_seg-1;
                 end
+                % duplicated *n
+                n=floor((abs(y(i)-y(j))-3*limit)/limit);
+                chk(cnt_chk+1:cnt_chk+n,:)=repmat(chk(cnt_chk,:),n,1);
+                cnt_chk=cnt_chk+n;
                  
             else
                 % seg
@@ -971,7 +987,7 @@ function [seg,chk]=process_coordinate_k(xs,ys)
             end
             
         elseif ys(i)==ys(j)
-            % same as xs(i)==xs(j)
+            % samlast_vtxe as xs(i)==xs(j)
             y=xs;x=ys;  % here diff
             
             % j i
@@ -1002,6 +1018,10 @@ function [seg,chk]=process_coordinate_k(xs,ys)
                     seg(1,:)=[];
                     cnt_seg=cnt_seg-1;
                 end
+                % duplicated *n
+                n=floor((abs(y(i)-y(j))-3*limit)/limit);
+                chk(cnt_chk+1:cnt_chk+n,:)=repmat(chk(cnt_chk,:),n,1);
+                cnt_chk=cnt_chk+n;
                  
             else
                 % seg
@@ -1110,7 +1130,7 @@ function img_process=OPC(img_source)
 %     
 %     EPE=cal_EPE(img_source_i,img_filtered);
     
-    global test_show_im
+    global test_show_im;
     if test_show_im==10
         % show result
         subp_num_r=2;
