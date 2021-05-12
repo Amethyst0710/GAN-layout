@@ -944,8 +944,8 @@ function [seg,chk]=process_coordinate_k(xs,ys)
                 last_vtx=false;
 
                 % chk
-                cnt_chk=cnt_chk+1;
-                chk(cnt_chk,:)=[x(i), floor((y(i)+y(j))/2),'x']; 
+%                 cnt_chk=cnt_chk+1;
+%                 chk(cnt_chk,:)=[x(i), floor((y(i)+y(j))/2),'x']; 
                 if ~hammer_chk
                     % record 2 hammer_chk
                     cnt_chk=cnt_chk+1;
@@ -961,8 +961,11 @@ function [seg,chk]=process_coordinate_k(xs,ys)
                     cnt_seg=cnt_seg-1;
                 end
                 % duplicated *n
-                n=floor((abs(y(i)-y(j))-3*limit)/limit);
-                chk(cnt_chk+1:cnt_chk+n,:)=repmat(chk(cnt_chk,:),n,1);
+                n=floor((abs(y(i)-y(j))-2*limit)/limit);
+%                 chk(cnt_chk+1:cnt_chk+n,:)=repmat(chk(cnt_chk,:),n,1);
+                for nn=1:n
+                    chk(cnt_chk+nn,:)=[x(i), floor(y(j)+pn*limit/2+pn*limit*nn),'x'];
+                end
                 cnt_chk=cnt_chk+n;
                  
             else
@@ -1002,8 +1005,8 @@ function [seg,chk]=process_coordinate_k(xs,ys)
                 last_vtx=false;
 
                 % chk
-                cnt_chk=cnt_chk+1;
-                chk(cnt_chk,:)=[floor((y(i)+y(j))/2),x(i),'y']; 
+%                 cnt_chk=cnt_chk+1;
+%                 chk(cnt_chk,:)=[floor((y(i)+y(j))/2),x(i),'y']; 
                 if ~hammer_chk
                     % record 2 hammer_chk
                     cnt_chk=cnt_chk+1;
@@ -1019,8 +1022,11 @@ function [seg,chk]=process_coordinate_k(xs,ys)
                     cnt_seg=cnt_seg-1;
                 end
                 % duplicated *n
-                n=floor((abs(y(i)-y(j))-3*limit)/limit);
-                chk(cnt_chk+1:cnt_chk+n,:)=repmat(chk(cnt_chk,:),n,1);
+                n=floor((abs(y(i)-y(j))-2*limit)/limit);
+%                 chk(cnt_chk+1:cnt_chk+n,:)=repmat(chk(cnt_chk,:),n,1);
+                for nn=1:n
+                    chk(cnt_chk+nn,:)=[floor(y(j)+pn*limit/2+pn*limit*nn),x(i),'y'];
+                end
                 cnt_chk=cnt_chk+n;
                  
             else
