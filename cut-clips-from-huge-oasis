@@ -21,6 +21,7 @@ fname="${filename%.*}"
 #rm -r clips ascii
 #rm -r process_data original_data original_plot
 #
+#
 ###### here to get all layer info in the file, if don't need, don't use param 'all-layer'
 ##step-0: get layer info
 #if [[ $layersFile == "all-layer" ]]; then
@@ -94,7 +95,10 @@ fname="${filename%.*}"
 #  gdsfname="${gdsfilename%.*}"
 #  python3 gds2ascii.py "$gds" ./"$output_ascii_dir"/"$gdsfname".json
 #done
+#
 
+
+# last time i to 1100--3060
 #### here for only execute step 4
 ascii_dir="ascii"
 output_ascii_dir="$ascii_dir/$fname"

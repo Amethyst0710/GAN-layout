@@ -9,10 +9,12 @@ y2 = 3555
 ## radius = 5
 target_x = 50  # traget number only int
 target_y = target_x
+offset=[0.25, 0.50, 0.75]
 # interval = 20 #2
 # num=int(target/interval)
 with open('coor', 'w', encoding='utf-8') as f:
     f.write("X  Y\n")
     for x in [x1 + i * (x2 - x1) / target_x for i in range(target_x)]:
         for y in [y1 + j * (y2 - y1) / target_y for j in range(target_y)]:
-            f.write(str(x) + " " + str(y) + "\n")
+            for of in offset:
+                f.write(str(x+of) + " " + str(y+of) + "\n")

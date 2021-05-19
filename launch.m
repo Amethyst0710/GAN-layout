@@ -1,6 +1,7 @@
 % input: 
 % ascii_dir='ascii/demo3_162nm';
 % fname='demo3_162nm';
+last_num=3060; %1100 上一次运行到哪里
 
 picdir='./original_plot/';
 resizedir='./original_data/';
@@ -10,6 +11,8 @@ ascii_data_dir=strcat('./',ascii_dir,'/');
 subdir  = dir( ascii_data_dir );
 % 1, 2是list包含了. 和 .. 路径。
 for i = 3 : length( subdir )
+    if i<=last_num; continue;end
+    
     subdirpath = fullfile( ascii_data_dir, subdir( i ).name);
     file = subdir( i ) ;              % 子文件
     filename=file.name;
